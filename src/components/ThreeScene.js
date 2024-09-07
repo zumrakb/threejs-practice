@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { DragControls } from "three/examples/jsm/controls/DragControls";
 import gsap from "gsap";
 import * as CANNON from "cannon-es";
 import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
@@ -15,13 +16,21 @@ import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
 const ThreeScene = forwardRef((_, ref) => {
   const mountRefCube = useRef(null);
   const controlsRefCube = useRef(null);
+  const dragControlsRef = useRef(null);
   const meshRef = useRef(null); // Ref for the cube mesh
   const textMeshRef = useRef(null); // Ref for the text mesh
   const sceneCube = useRef(null); // Ref for the scene
   const [texture, setTexture] = useState(null);
   const [userText, setUserText] = useState("");
   const [selectedSurface, setSelectedSurface] = useState("front");
-  const [selectedTextureSurface, setSelectedTextureSurface] = useState("front"); // Yeni state
+  const [selectedTextureSurface, setSelectedTextureSurface] = useState("front");
+  const [textMeshes, setTextMeshes] = useState([]); // Array to store text meshes
+  const [selectedText, setSelectedText] = useState(null); // Store the selected text mesh
+  const [textSize, setTextSize] = useState(0.5); // Default text size
+
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+  const draggableObjects = useRef([]); // Array to store draggable objects
 
   useEffect(() => {
     if (!mountRefCube.current) return;
@@ -50,17 +59,12 @@ const ThreeScene = forwardRef((_, ref) => {
     rendererCube.shadowMap.type = THREE.PCFSoftShadowMap;
     mountRefCube.current.appendChild(rendererCube.domElement);
 
-    // Küp için Resize İşlemi
-    const handleResizeCube = () => {
-      if (!mountRefCube.current) return;
-      const width = mountRefCube.current.clientWidth;
-      const height = mountRefCube.current.clientHeight;
-      rendererCube.setSize(width, height);
-      cameraCube.aspect = width / height;
-      cameraCube.updateProjectionMatrix();
-    };
-
-    window.addEventListener("resize", handleResizeCube);
+    // Kontroller ekleyin
+    controlsRefCube.current = new OrbitControls(
+      cameraCube,
+      rendererCube.domElement
+    );
+    controlsRefCube.current.enableDamping = true;
 
     // Cannon.js Dünya ve Fizik Ayarları
     const world = new CANNON.World();
@@ -90,27 +94,19 @@ const ThreeScene = forwardRef((_, ref) => {
     // Küp için fizik gövdesi oluşturulması
     const geometry = new THREE.BoxGeometry(3, 3, 3);
     const materials = [
-      new THREE.MeshStandardMaterial({ color: "#00ff83" }), // front
-      new THREE.MeshStandardMaterial({ color: "#00ff83" }), // back
-      new THREE.MeshStandardMaterial({ color: "#00ff83" }), // top
-      new THREE.MeshStandardMaterial({ color: "#00ff83" }), // bottom
-      new THREE.MeshStandardMaterial({ color: "#00ff83" }), // left
-      new THREE.MeshStandardMaterial({ color: "#00ff83" }), // right
+      new THREE.MeshStandardMaterial({ color: "#00ff83" }),
+      new THREE.MeshStandardMaterial({ color: "#00ff83" }),
+      new THREE.MeshStandardMaterial({ color: "#00ff83" }),
+      new THREE.MeshStandardMaterial({ color: "#00ff83" }),
+      new THREE.MeshStandardMaterial({ color: "#00ff83" }),
+      new THREE.MeshStandardMaterial({ color: "#00ff83" }),
     ];
+
     const mesh = new THREE.Mesh(geometry, materials);
     mesh.castShadow = true;
-    mesh.receiveShadow = false;
     sceneCube.current.add(mesh);
-
-    meshRef.current = mesh; // Store the reference to mesh
-
-    const boxShape = new CANNON.Box(new CANNON.Vec3(1.5, 1.5, 1.5));
-    const boxBody = new CANNON.Body({
-      mass: 1,
-      position: new CANNON.Vec3(0, 5, 0),
-    });
-    boxBody.addShape(boxShape);
-    world.addBody(boxBody);
+    meshRef.current = mesh;
+    draggableObjects.current.push(mesh);
 
     // Ambient Light
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
@@ -120,50 +116,47 @@ const ThreeScene = forwardRef((_, ref) => {
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
     directionalLight.position.set(5, 10, 5);
     directionalLight.castShadow = true;
-    directionalLight.shadow.mapSize.width = 2048;
-    directionalLight.shadow.mapSize.height = 2048;
-    directionalLight.shadow.camera.near = 1;
-    directionalLight.shadow.camera.far = 20;
-    directionalLight.shadow.camera.left = -10;
-    directionalLight.shadow.camera.right = 10;
-    directionalLight.shadow.camera.top = 10;
-    directionalLight.shadow.camera.bottom = -10;
-    directionalLight.shadow.bias = -0.001;
-
     sceneCube.current.add(directionalLight);
 
-    // Kontroller ekleyin
-    controlsRefCube.current = new OrbitControls(
+    // Drag Controls setup
+    dragControlsRef.current = new DragControls(
+      draggableObjects.current,
       cameraCube,
       rendererCube.domElement
     );
-    controlsRefCube.current.enableDamping = true;
-    controlsRefCube.current.enablePan = true;
-    controlsRefCube.current.enableZoom = true;
 
-    // GSAP Animations
-    const tl = gsap.timeline({ defaults: { duration: 1 } });
-    tl.fromTo(mesh.scale, { z: 0, x: 0, y: 0 }, { z: 1, x: 1, y: 1 });
+    dragControlsRef.current.addEventListener("dragstart", () => {
+      controlsRefCube.current.enabled = false;
+    });
+    dragControlsRef.current.addEventListener("dragend", () => {
+      controlsRefCube.current.enabled = true;
+    });
 
     // Animation loop
     const animate = () => {
       world.step(1 / 60);
-
-      mesh.position.copy(boxBody.position);
-      mesh.quaternion.copy(boxBody.quaternion);
-
       controlsRefCube.current.update();
-
       rendererCube.render(sceneCube.current, cameraCube);
       requestAnimationFrame(animate);
     };
     animate();
 
+    // Setup mouse event listeners on client side
+    if (typeof window !== "undefined") {
+      window.addEventListener("mousemove", onDocumentMouseMove);
+    }
+
     // Cleanup on unmount
     return () => {
-      window.removeEventListener("resize", handleResizeCube);
       if (mountRefCube.current) {
         mountRefCube.current.removeChild(rendererCube.domElement);
+      }
+      controlsRefCube.current.dispose();
+      dragControlsRef.current.dispose();
+
+      // Remove event listener on cleanup
+      if (typeof window !== "undefined") {
+        window.removeEventListener("mousemove", onDocumentMouseMove);
       }
     };
   }, [mountRefCube]);
@@ -222,97 +215,160 @@ const ThreeScene = forwardRef((_, ref) => {
   const handleAddTextToCube = () => {
     const fontLoader = new FontLoader();
     fontLoader.load("/fonts.json", (font) => {
-      if (textMeshRef.current) {
-        // Remove old text mesh
-        sceneCube.current.remove(textMeshRef.current);
-      }
-
       const textGeometry = new TextGeometry(userText, {
         font: font,
-        size: 0.5,
+        size: textSize,
         height: 0.1,
       });
-      textGeometry.center();
+
+      // Positioning text slightly to the right side
+      textGeometry.translate(1.5, 0, 1.5); // Move text to the right side
 
       const textMaterial = new THREE.MeshStandardMaterial({ color: "#000000" });
       const newTextMesh = new THREE.Mesh(textGeometry, textMaterial);
-
-      // Kullanıcının seçtiği yüzeye göre metni yerleştirme
-      switch (selectedSurface) {
-        case "top":
-          newTextMesh.position.set(0, 1.5, 0);
-          newTextMesh.rotation.set(-Math.PI / 2, 0, 0);
-          break;
-        case "bottom":
-          newTextMesh.position.set(0, -1.5, 0);
-          newTextMesh.rotation.set(Math.PI / 2, 0, 0);
-          break;
-        case "left":
-          newTextMesh.position.set(-1.5, 0, 0);
-          newTextMesh.rotation.set(0, Math.PI / 2, 0);
-          break;
-        case "right":
-          newTextMesh.position.set(1.5, 0, 0);
-          newTextMesh.rotation.set(0, -Math.PI / 2, 0);
-          break;
-        case "front":
-          newTextMesh.position.set(0, 0, 1.5);
-          newTextMesh.rotation.set(0, 0, 0);
-          break;
-        case "back":
-          newTextMesh.position.set(0, 0, -1.5);
-          newTextMesh.rotation.set(0, Math.PI, 0);
-          break;
-        default:
-          newTextMesh.position.set(0, 2, 0);
-          break;
-      }
-
+      newTextMesh.position.set(0, 0, 0); // Keep it near the center but slightly right
       sceneCube.current.add(newTextMesh);
-      textMeshRef.current = newTextMesh; // Store reference to the new text mesh
+      draggableObjects.current.push(newTextMesh);
+      setTextMeshes((prevMeshes) => [...prevMeshes, newTextMesh]); // Store reference to the new text mesh
+      setSelectedText(newTextMesh); // Select the newly added text
     });
   };
 
-  useImperativeHandle(ref, () => ({
-    startAutoRotate() {
-      controlsRefCube.current.autoRotate = true;
-    },
-    stopAutoRotate() {
-      controlsRefCube.current.autoRotate = false;
-    },
-    showFromTop() {
-      controlsRefCube.current.reset();
-      controlsRefCube.current.object.position.set(0, 10, 0);
-      controlsRefCube.current.object.lookAt(0, 0, 0);
-    },
-  }));
+  const handleUpdateText = () => {
+    if (!selectedText) return;
+
+    // Remove the old text mesh
+    sceneCube.current.remove(selectedText);
+
+    // Add new updated text mesh
+    const fontLoader = new FontLoader();
+    fontLoader.load("/fonts.json", (font) => {
+      const textGeometry = new TextGeometry(userText, {
+        font: font,
+        size: textSize,
+        height: 0.1,
+      });
+      textGeometry.translate(1.5, 0, 1.5); // Keep the updated text also on the right side
+
+      const textMaterial = new THREE.MeshStandardMaterial({ color: "#000000" });
+      const updatedTextMesh = new THREE.Mesh(textGeometry, textMaterial);
+      updatedTextMesh.position.copy(selectedText.position); // Maintain the old position
+      sceneCube.current.add(updatedTextMesh);
+      draggableObjects.current.push(updatedTextMesh);
+
+      setTextMeshes((prevMeshes) =>
+        prevMeshes.map((mesh) =>
+          mesh === selectedText ? updatedTextMesh : mesh
+        )
+      );
+      setSelectedText(updatedTextMesh); // Update the selected text reference
+    });
+  };
+
+  const handleDeleteText = () => {
+    if (!selectedText) return;
+
+    // Remove text from the scene
+    sceneCube.current.remove(selectedText);
+    draggableObjects.current = draggableObjects.current.filter(
+      (obj) => obj !== selectedText
+    );
+
+    setTextMeshes((prevMeshes) =>
+      prevMeshes.filter((mesh) => mesh !== selectedText)
+    );
+    setSelectedText(null);
+  };
+
+  const onDocumentMouseMove = (event) => {
+    event.preventDefault();
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  };
 
   return (
     <>
       <div ref={mountRefCube} className="w-full h-[600px] mb-2" />
-      <input type="file" accept="image/*" onChange={handleFileInput} />
-      <div style={{ position: "absolute", bottom: "10px", right: "10px" }}>
+      <div
+        style={{
+          padding: "10px",
+          border: "1px solid #ddd",
+          borderRadius: "8px",
+          maxWidth: "300px",
+          backgroundColor: "#f9f9f9",
+          marginTop: "20px",
+        }}
+      >
+        <h3
+          style={{ marginBottom: "10px", fontSize: "16px", fontWeight: "bold" }}
+        >
+          Text Controls
+        </h3>
         <input
           type="text"
           value={userText}
           onChange={(e) => setUserText(e.target.value)}
           placeholder="Enter text"
+          style={{ marginBottom: "10px", width: "100%", padding: "8px" }}
         />
-        <select
-          value={selectedSurface}
-          onChange={(e) => setSelectedSurface(e.target.value)}
+        <button
+          onClick={handleAddTextToCube}
+          style={{ marginBottom: "10px", width: "100%", padding: "8px" }}
         >
-          <option value="front">Front</option>
-          <option value="back">Back</option>
-          <option value="top">Top</option>
-          <option value="bottom">Bottom</option>
-          <option value="left">Left</option>
-          <option value="right">Right</option>
-        </select>
-        <button onClick={handleAddTextToCube}>Put Text on 3D Model</button>
+          Add Text
+        </button>
+        <button
+          onClick={handleUpdateText}
+          style={{ marginBottom: "10px", width: "100%", padding: "8px" }}
+        >
+          Update Text
+        </button>
+        <button
+          onClick={handleDeleteText}
+          style={{ marginBottom: "10px", width: "100%", padding: "8px" }}
+        >
+          Delete Text
+        </button>
+
+        <label style={{ marginBottom: "10px", display: "block" }}>
+          Text Size:
+          <input
+            type="range"
+            min="0.1"
+            max="2"
+            step="0.1"
+            value={textSize}
+            onChange={(e) => setTextSize(parseFloat(e.target.value))}
+            style={{ width: "100%" }}
+          />
+        </label>
+      </div>
+
+      <div
+        style={{
+          padding: "10px",
+          border: "1px solid #ddd",
+          borderRadius: "8px",
+          maxWidth: "300px",
+          backgroundColor: "#f9f9f9",
+          marginTop: "20px",
+        }}
+      >
+        <h3
+          style={{ marginBottom: "10px", fontSize: "16px", fontWeight: "bold" }}
+        >
+          Texture Controls
+        </h3>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleFileInput}
+          style={{ marginBottom: "10px" }}
+        />
         <select
           value={selectedTextureSurface}
           onChange={(e) => setSelectedTextureSurface(e.target.value)}
+          style={{ marginBottom: "10px", width: "100%", padding: "8px" }}
         >
           <option value="front">Front</option>
           <option value="back">Back</option>
@@ -323,8 +379,9 @@ const ThreeScene = forwardRef((_, ref) => {
         </select>
         <button
           onClick={() => applyTextureToSurface(selectedTextureSurface, texture)}
+          style={{ width: "100%", padding: "8px" }}
         >
-          Put Image on 3D Model
+          Apply Texture
         </button>
       </div>
     </>
