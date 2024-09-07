@@ -19,7 +19,6 @@ const ThreePage = () => {
   return (
     <div className="flex gap-12 ml-12">
       <div className="flex flex-col gap-4 min-h-screen text-orange-500 w-1/2 mt-4">
-        <p>This is the navbar</p>
         <div className="border border-orange-500  rounded-lg">
           <ThreeScene ref={threeSceneRef} />
         </div>
