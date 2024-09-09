@@ -6,7 +6,7 @@ import * as CANNON from "cannon-es";
 import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
 import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
 
-const ThreeScene = forwardRef((_, ref) => {
+const AdjustPics = forwardRef((_, ref) => {
   const mountRefCube = useRef(null);
   const controlsRefCube = useRef(null);
   const dragControlsRef = useRef(null);
@@ -341,80 +341,87 @@ Eğer tıklanan bir nesne yoksa, konsola mesaj yazdırır ("No text mesh was cli
   };
 
   return (
-    <>
-      <div ref={mountRefCube} className="w-full h-[600px] mb-2" />
-      <div className="p-4 border border-gray-300 rounded-lg max-w-sm bg-gray-100 mt-4">
-        <h3 className="mb-2 text-lg font-bold">Text Controls</h3>
-        <input
-          type="text"
-          value={userText}
-          onChange={(e) => setUserText(e.target.value)}
-          placeholder="Enter text"
-          className="mb-2 w-full p-2 border border-gray-300 rounded"
-          onClick={(e) => e.stopPropagation()} // input alanına tıklama olayını durdurun
-        />
-        <button
-          onClick={handleAddTextToCube}
-          className="mb-2 w-full p-2 bg-orange-500 text-white rounded hover:bg-orange-600"
-        >
-          Add Text
-        </button>
-        <button
-          onClick={handleUpdateText}
-          className="mb-2 w-full p-2 bg-orange-500 text-white rounded hover:bg-orange-600"
-        >
-          Update Text
-        </button>
-        <button
-          onClick={handleDeleteText}
-          className="w-full p-2 bg-red-500 text-white rounded hover:bg-red-600"
-        >
-          Delete Text
-        </button>
-
-        <label className="block mb-2">
-          Text Size:
+    <div className="flex gap-2 px-2 ">
+      <div
+        ref={mountRefCube}
+        className="w-full h-[600px] mb-2 border border-orange-500 rounded-lg"
+      />
+      <div className="flex ">
+        <div className="p-4 h-[600px] border border-gray-300 rounded-lg max-w-sm bg-gray-100 ">
+          <h3 className="mb-2 text-lg font-bold">Text Controls</h3>
           <input
-            type="range"
-            min="0.1"
-            max="2"
-            step="0.1"
-            value={textSize}
-            onChange={(e) => setTextSize(parseFloat(e.target.value))}
-            className="w-full"
+            type="text"
+            value={userText}
+            onChange={(e) => setUserText(e.target.value)}
+            placeholder="Enter text"
+            className="mb-2 w-full p-2 border border-gray-300 rounded"
+            onClick={(e) => e.stopPropagation()} // input alanına tıklama olayını durdurun
           />
-        </label>
-      </div>
+          <button
+            onClick={handleAddTextToCube}
+            className="mb-2 w-full p-2 bg-orange-500 text-white rounded hover:bg-orange-600"
+          >
+            Add Text
+          </button>
+          <button
+            onClick={handleUpdateText}
+            className="mb-2 w-full p-2 bg-orange-500 text-white rounded hover:bg-orange-600"
+          >
+            Update Text
+          </button>
+          <button
+            onClick={handleDeleteText}
+            className="w-full p-2 bg-red-500 text-white rounded hover:bg-red-600"
+          >
+            Delete Text
+          </button>
 
-      <div className="p-4 border border-gray-300 rounded-lg max-w-sm bg-gray-100 mt-4">
-        <h3 className="mb-2 text-lg font-bold">Texture Controls</h3>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleFileInput}
-          className="mb-2"
-        />
-        <select
-          value={selectedTextureSurface}
-          onChange={(e) => setSelectedTextureSurface(e.target.value)}
-          className="mb-2 w-full p-2 border border-gray-300 rounded"
-        >
-          <option value="front">Front</option>
-          <option value="back">Back</option>
-          <option value="top">Top</option>
-          <option value="bottom">Bottom</option>
-          <option value="left">Left</option>
-          <option value="right">Right</option>
-        </select>
-        <button
-          onClick={() => applyTextureToSurface(selectedTextureSurface, texture)}
-          className="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          Apply Texture
-        </button>
+          <label className="block mb-2">
+            Text Size:
+            <input
+              type="range"
+              min="0.1"
+              max="2"
+              step="0.1"
+              value={textSize}
+              onChange={(e) => setTextSize(parseFloat(e.target.value))}
+              className="w-full"
+            />
+          </label>
+        </div>
+
+        <div className="p-4 h-[600px] border border-gray-300 rounded-lg max-w-sm bg-gray-100 ">
+          <h3 className="mb-2 text-lg font-bold">Texture Controls</h3>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFileInput}
+            className="mb-2"
+          />
+          <select
+            value={selectedTextureSurface}
+            onChange={(e) => setSelectedTextureSurface(e.target.value)}
+            className="mb-2 w-full p-2 border border-gray-300 rounded"
+          >
+            <option value="front">Front</option>
+            <option value="back">Back</option>
+            <option value="top">Top</option>
+            <option value="bottom">Bottom</option>
+            <option value="left">Left</option>
+            <option value="right">Right</option>
+          </select>
+          <button
+            onClick={() =>
+              applyTextureToSurface(selectedTextureSurface, texture)
+            }
+            className="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Apply Texture
+          </button>
+        </div>
       </div>
-    </>
+    </div>
   );
 });
 
-export default ThreeScene;
+export default AdjustPics;

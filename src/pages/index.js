@@ -7,13 +7,16 @@ export default function Home() {
   return (
     <main className="flex items-center justify-between max-w-7xl mx-auto min-h-screen">
       <Link href={"/three"} className="bg-red-500 p-3 rounded-xl">
-        3d sahneyi görmek için tıkla.
+        3d sahne - TEXT ekle,sil,update
       </Link>
       <Link href={"/shapes"} className="bg-red-500 p-3 rounded-xl">
         farklı şekilleri görmek için tıkla
       </Link>
       <Link href={"/upload3d"} className="bg-red-500 p-3 rounded-xl">
         3d model yükle
+      </Link>
+      <Link href={"/adjustPics"} className="bg-red-500 p-3 rounded-xl">
+        3d sahne - TEXTURE düzenlemeleri
       </Link>
     </main>
   );
