@@ -2,11 +2,10 @@ import React, { useRef, useEffect, forwardRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { DragControls } from "three/examples/jsm/controls/DragControls";
+import { DecalGeometry } from "three/examples/jsm/geometries/DecalGeometry";
 import * as CANNON from "cannon-es";
-import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
-import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
 
-const AdjustPics = forwardRef((_, ref) => {
+const AdjustPicsDecal = forwardRef((_, ref) => {
   const mountRefCube = useRef(null);
   const controlsRefCube = useRef(null);
   const dragControlsRef = useRef(null);
@@ -15,12 +14,6 @@ const AdjustPics = forwardRef((_, ref) => {
   const cameraCube = useRef(null);
   const rendererCubeRef = useRef(null);
   const [texture, setTexture] = useState(null);
-  const [selectedTextureSurface, setSelectedTextureSurface] = useState("front");
-  const [repeatX, setRepeatX] = useState(1);
-  const [repeatY, setRepeatY] = useState(1);
-  const [wrapMode, setWrapMode] = useState("RepeatWrapping");
-  const [offsetX, setOffsetX] = useState(0);
-  const [offsetY, setOffsetY] = useState(0);
 
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
@@ -144,7 +137,6 @@ const AdjustPics = forwardRef((_, ref) => {
       reader.onload = function (e) {
         const textureLoader = new THREE.TextureLoader();
         textureLoader.load(e.target.result, (loadedTexture) => {
-          applyTextureProperties(loadedTexture);
           setTexture(loadedTexture);
         });
       };
@@ -152,47 +144,49 @@ const AdjustPics = forwardRef((_, ref) => {
     }
   };
 
-  const applyTextureProperties = (loadedTexture) => {
-    if (!loadedTexture) return;
-    // Apply texture settings
-    loadedTexture.wrapS = THREE[wrapMode];
-    loadedTexture.wrapT = THREE[wrapMode];
-    loadedTexture.repeat.set(repeatX, repeatY);
-    loadedTexture.offset.set(offsetX, offsetY);
-    loadedTexture.needsUpdate = true; // Ensure texture is updated
-  };
-
-  const applyTextureToSurface = (surface, texture) => {
+  const applyDecalToSurface = () => {
     if (!meshRef.current || !texture) return;
-    applyTextureProperties(texture); // Re-apply properties to the texture
-    const materials = meshRef.current.material;
 
-    let materialIndex;
-    switch (surface) {
-      case "front":
-        materialIndex = 0;
-        break;
-      case "back":
-        materialIndex = 1;
-        break;
-      case "top":
-        materialIndex = 2;
-        break;
-      case "bottom":
-        materialIndex = 3;
-        break;
-      case "left":
-        materialIndex = 4;
-        break;
-      case "right":
-        materialIndex = 5;
-        break;
-      default:
-        return;
-    }
+    // Find the intersected point on the surface
+    const intersected = {
+      object: meshRef.current,
+      point: new THREE.Vector3(0, 0, 1), // Adjust position to make decal visible
+      face: { normal: new THREE.Vector3(0, 0, 1) },
+    };
 
-    materials[materialIndex].map = texture;
-    materials[materialIndex].needsUpdate = true;
+    const material = new THREE.MeshStandardMaterial({
+      map: texture,
+      transparent: true,
+      opacity: 1,
+      depthTest: true,
+      depthWrite: true,
+      polygonOffset: true,
+      polygonOffsetFactor: -1, // Adjusted for better visibility
+      side: THREE.DoubleSide, // Ensure decal is visible from both sides
+    });
+
+    const size = new THREE.Vector3(2, 2, 1); // Adjusted size to make it more visible
+    const position = intersected.point.clone();
+    const orientation = intersected.face.normal.clone();
+
+    console.log("Decal material created:", material);
+    console.log("Decal size set to:", size);
+    console.log("Decal position:", position);
+    console.log("Decal orientation:", orientation);
+
+    const decalGeometry = new DecalGeometry(
+      intersected.object,
+      position,
+      orientation,
+      size
+    );
+
+    console.log("Decal geometry created:", decalGeometry);
+
+    const decalMesh = new THREE.Mesh(decalGeometry, material);
+    sceneCube.current.add(decalMesh);
+
+    console.log("Decal mesh added to the scene:", decalMesh);
   };
 
   const updateDragControls = () => {
@@ -222,112 +216,23 @@ const AdjustPics = forwardRef((_, ref) => {
       />
       <div className="flex">
         <div className="p-4 h-[600px] border border-gray-300 rounded-lg max-w-sm bg-gray-100">
-          <h3 className="mb-2 text-lg font-bold">Texture Controls</h3>
+          <h3 className="mb-2 text-lg font-bold">Decal Controls</h3>
           <input
             type="file"
             accept="image/*"
             onChange={handleFileInput}
             className="mb-2"
           />
-          <select
-            value={selectedTextureSurface}
-            onChange={(e) => setSelectedTextureSurface(e.target.value)}
-            className="mb-2 w-full p-2 border border-gray-300 rounded"
-          >
-            <option value="front">Front</option>
-            <option value="back">Back</option>
-            <option value="top">Top</option>
-            <option value="bottom">Bottom</option>
-            <option value="left">Left</option>
-            <option value="right">Right</option>
-          </select>
           <button
-            onClick={() =>
-              applyTextureToSurface(selectedTextureSurface, texture)
-            }
+            onClick={applyDecalToSurface}
             className="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
-            Apply Texture
+            Apply Decal
           </button>
-          <label className="block mt-4">
-            Repeat X: {repeatX}
-            <input
-              type="range"
-              min="1"
-              max="10"
-              step="1"
-              value={repeatX}
-              onChange={(e) => {
-                setRepeatX(parseFloat(e.target.value));
-                if (texture) applyTextureProperties(texture); // Update texture properties on change
-              }}
-              className="w-full"
-            />
-          </label>
-          <label className="block mt-2">
-            Repeat Y: {repeatY}
-            <input
-              type="range"
-              min="1"
-              max="10"
-              step="1"
-              value={repeatY}
-              onChange={(e) => {
-                setRepeatY(parseFloat(e.target.value));
-                if (texture) applyTextureProperties(texture); // Update texture properties on change
-              }}
-              className="w-full"
-            />
-          </label>
-          <label className="block mt-4">
-            Wrap Mode:
-            <select
-              value={wrapMode}
-              onChange={(e) => {
-                setWrapMode(e.target.value);
-                if (texture) applyTextureProperties(texture); // Update texture properties on change
-              }}
-              className="w-full p-2 border border-gray-300 rounded"
-            >
-              <option value="RepeatWrapping">Repeat</option>
-              <option value="ClampToEdgeWrapping">Clamp to Edge</option>
-              <option value="MirroredRepeatWrapping">Mirrored Repeat</option>
-            </select>
-          </label>
-          <label className="block mt-4">
-            Offset X: {offsetX.toFixed(2)}
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={offsetX}
-              onChange={(e) => {
-                setOffsetX(parseFloat(e.target.value));
-                if (texture) applyTextureProperties(texture); // Update texture properties on change
-              }}
-              className="w-full"
-            />
-          </label>
-          <label className="block mt-2">
-            Offset Y: {offsetY.toFixed(2)}
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={offsetY}
-              onChange={(e) => {
-                setOffsetY(parseFloat(e.target.value));
-                if (texture) applyTextureProperties(texture); // Update texture properties on change
-              }}
-              className="w-full"
-            />
-          </label>
         </div>
       </div>
     </div>
   );
 });
 
-export default AdjustPics;
+export default AdjustPicsDecal;
