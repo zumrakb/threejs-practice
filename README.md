@@ -3,4 +3,4 @@ this is my practice file for three js, using with nextjs+tailwindcss.
 - wrap modes
 - repeat
 - offset
-features used with Texture Loader.
+  features used with Texture Loader.
