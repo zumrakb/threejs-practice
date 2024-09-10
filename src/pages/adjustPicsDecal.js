@@ -260,12 +260,12 @@ const AdjustPicsDecal = forwardRef((_, ref) => {
   const mountRefCube = useRef(null);
   const controlsRefCube = useRef(null);
   const dragControlsRef = useRef(null);
+  const meshRef = useRef(null);
   const sceneCube = useRef(null);
   const cameraCube = useRef(null);
   const rendererCubeRef = useRef(null);
   const [texture, setTexture] = useState(null);
-  const [selectedColor, setSelectedColor] = useState("#ffffff");
-  const [isModelLoaded, setIsModelLoaded] = useState(false); // Track model loading status
+  const [selectedColor, setSelectedColor] = useState("#ffffff"); // State to manage selected color
 
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
@@ -335,24 +335,18 @@ const AdjustPicsDecal = forwardRef((_, ref) => {
     // Load 3D model using GLTFLoader
     const loader = new GLTFLoader();
     loader.load(
-      "/alex/scene.gltf",
+      "adam.glb",
       (gltf) => {
         const model = gltf.scene;
         model.traverse((child) => {
           if (child.isMesh) {
-            if (child.material.map) {
-              child.material.color.set(selectedColor);
-              child.material.map.needsUpdate = true;
-            } else {
-              child.material.color.set(selectedColor);
-            }
+            child.material.color.set(selectedColor); // Apply the selected color
             child.material.needsUpdate = true;
           }
         });
         model.position.set(0, 0, 0);
         sceneCube.current.add(model);
         modelRef.current = model;
-        setIsModelLoaded(true); // Set model as loaded
       },
       undefined,
       (error) => {
@@ -396,7 +390,7 @@ const AdjustPicsDecal = forwardRef((_, ref) => {
       dragControlsRef.current?.dispose();
       mountRefCube.current.removeEventListener("click", handleMouseClick);
     };
-  }, [mountRefCube, selectedColor]);
+  }, [mountRefCube, texture, selectedColor]); // Include selectedColor in dependencies
 
   const handleFileInput = (event) => {
     const file = event.target.files[0];
@@ -412,26 +406,20 @@ const AdjustPicsDecal = forwardRef((_, ref) => {
     }
   };
 
-  // Handle mouse click event
   const handleMouseClick = (event) => {
-    if (!modelRef.current || !texture || !isModelLoaded) {
-      console.warn("Model or texture is not loaded.");
-      return;
-    }
+    if (!modelRef.current || !texture) return;
 
     // Calculate mouse position
     const rect = mountRefCube.current.getBoundingClientRect();
     mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
-    // Perform raycasting to find clicked point on model
+    // Perform raycasting to find the clicked point on the model
     raycaster.setFromCamera(mouse, cameraCube.current);
     const intersects = raycaster.intersectObject(modelRef.current, true);
 
     if (intersects.length > 0) {
       const intersected = intersects[0];
-
-      // Apply decal
       applyDecal(intersected);
     }
   };
@@ -444,11 +432,11 @@ const AdjustPicsDecal = forwardRef((_, ref) => {
       depthTest: true,
       depthWrite: true,
       polygonOffset: true,
-      polygonOffsetFactor: -1,
+      polygonOffsetFactor: -1, // Adjust for visibility
       side: THREE.DoubleSide,
     });
 
-    const size = new THREE.Vector3(2, 2, 1);
+    const size = new THREE.Vector3(2, 2, 1); // Decal size
     const position = intersected.point.clone();
     const orientation = intersected.face.normal.clone();
 
@@ -465,21 +453,18 @@ const AdjustPicsDecal = forwardRef((_, ref) => {
     console.log("Decal mesh added to the scene:", decalMesh);
   };
 
-  const applyColorToModel = (color) => {
-    if (!modelRef.current) return;
-
-    modelRef.current.traverse((node) => {
-      if (node.isMesh) {
-        node.material.color.set(color);
-        node.material.needsUpdate = true;
-      }
-    });
-  };
-
   const handleColorChange = (event) => {
-    const color = event.target.value;
-    setSelectedColor(color);
-    applyColorToModel(color);
+    const newColor = event.target.value;
+    setSelectedColor(newColor);
+    // Apply the selected color to the model
+    if (modelRef.current) {
+      modelRef.current.traverse((child) => {
+        if (child.isMesh) {
+          child.material.color.set(newColor);
+          child.material.needsUpdate = true;
+        }
+      });
+    }
   };
 
   const updateDragControls = () => {
@@ -516,12 +501,17 @@ const AdjustPicsDecal = forwardRef((_, ref) => {
             onChange={handleFileInput}
             className="mb-2"
           />
-          <input
-            type="color"
+          <select
             value={selectedColor}
             onChange={handleColorChange}
             className="mb-2"
-          />
+          >
+            <option value="#ffffff">White</option>
+            <option value="#ff0000">Red</option>
+            <option value="#00ff00">Green</option>
+            <option value="#0000ff">Blue</option>
+            <option value="#000000">Black</option>
+          </select>
           <button
             onClick={handleMouseClick}
             className="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
