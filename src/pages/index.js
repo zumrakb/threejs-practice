@@ -5,7 +5,7 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <main className="flex items-center justify-between max-w-7xl mx-auto min-h-screen">
+    <main className="flex flex-wrap items-center justify-between max-w-7xl mx-auto min-h-screen ">
       <Link
         href={"/three"}
         className="bg-orange-500 text-white font-semibold hover:bg-orange-200 p-3 rounded-xl"
@@ -35,6 +35,18 @@ export default function Home() {
         className="bg-orange-500 text-white font-semibold hover:bg-orange-200 p-3 rounded-xl"
       >
         3d sahne - DECAL düzenlemeleri
+      </Link>
+      <Link
+        href={"/uygulama"}
+        className="bg-orange-500 text-white font-bold hover:bg-orange-200 p-3 rounded-xl mx-auto"
+      >
+        KAPSAMLI UYGULAMA GÖREVİ
+      </Link>
+      <Link
+        href={"/uygulamaV2"}
+        className="bg-orange-500 text-white font-bold hover:bg-orange-200 p-3 rounded-xl mx-auto"
+      >
+        KAPSAMLI UYGULAMA GÖREVİ - V 2
       </Link>
     </main>
   );
