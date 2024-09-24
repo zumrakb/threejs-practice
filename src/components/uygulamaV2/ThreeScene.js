@@ -24,7 +24,6 @@ function ThreeScene({ mountRef, cameraRef, sceneRef, controlsRef }) {
     );
     mountRef.current.appendChild(renderer.domElement);
 
-    // OrbitControls ekleme
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
@@ -49,6 +48,9 @@ function ThreeScene({ mountRef, cameraRef, sceneRef, controlsRef }) {
     const spotLight = new THREE.SpotLight(0xffffff, 1);
     spotLight.position.set(15, 40, 35);
     scene.add(spotLight);
+
+    // Sahnedeki nesne sayısını kontrol et
+    console.log("Scene children count:", scene.children.length);
 
     const animate = () => {
       requestAnimationFrame(animate);
