@@ -3,7 +3,13 @@ import * as THREE from "three";
 import ThreeScene from "../components/uygulamaV2/ThreeScene";
 import ModelLoader from "../components/uygulamaV2/ModelLoader";
 import RaycasterControls from "../components/uygulamaV2/RaycasterControls";
-import { addText } from "../components/uygulamaV2/TextFunctions.js";
+import {
+  addText,
+  createCombinedTexture,
+  getTextsForMesh,
+  setImageForMesh,
+  getImageForMesh,
+} from "../components/uygulamaV2/TextFunctions.js";
 
 function uygulamaV2() {
   const mountRef = useRef(null);
@@ -12,13 +18,13 @@ function uygulamaV2() {
   const controlsRef = useRef(null);
   const modelRef = useRef(null);
 
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [selectedPart, setSelectedPart] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null); // Seçilen resim
+  const [selectedPart, setSelectedPart] = useState(null); // Seçilen yüzey
   const [meshNames, setMeshNames] = useState([]);
   const [modelLoaded, setModelLoaded] = useState(false);
 
-  const [newText, setNewText] = useState("");
-  const [texts, setTexts] = useState([]);
+  const [newText, setNewText] = useState(""); // Metin ekleme inputu
+  const [texts, setTexts] = useState([]); // Eklenen metinler
 
   useEffect(() => {
     if (modelLoaded && modelRef.current && meshNames.length === 0) {
@@ -47,29 +53,35 @@ function uygulamaV2() {
   const selectPart = (part) => {
     console.log("Selected part:", part);
     setSelectedPart(part);
+    setTexts(getTextsForMesh(part)); // Seçilen yüzeye ait metinleri çekiyoruz
+    setSelectedImage(getImageForMesh(part)); // Seçilen yüzeye ait resmi çekiyoruz
   };
 
-  const applyImageToModel = () => {
-    if (selectedImage && modelRef.current && selectedPart) {
-      const textureLoader = new THREE.TextureLoader();
-      textureLoader.load(selectedImage, (texture) => {
-        texture.flipY = false;
+  // Resmi ve metni modele uygula
+  const applyCombinedTextureToModel = () => {
+    if (
+      (selectedImage || texts.length > 0) &&
+      modelRef.current &&
+      selectedPart
+    ) {
+      modelRef.current.traverse((child) => {
+        if (child.isMesh && child.name === selectedPart) {
+          const combinedTexture = createCombinedTexture(
+            selectedImage,
+            texts,
+            1024,
+            1024
+          );
 
-        modelRef.current.traverse((child) => {
-          if (
-            child.isMesh &&
-            child.name.trim().toLowerCase() ===
-              selectedPart.trim().toLowerCase()
-          ) {
-            console.log(`Applying texture to selected part: ${selectedPart}`);
-            child.material = child.material.clone();
-            child.material.map = texture;
-            child.material.needsUpdate = true;
-          }
-        });
+          const newMaterial = new THREE.MeshBasicMaterial({
+            map: combinedTexture,
+            transparent: true,
+          });
+
+          child.material = newMaterial;
+          child.material.needsUpdate = true;
+        }
       });
-    } else {
-      console.log("Seçili mesh veya resim bulunamadı.");
     }
   };
 
@@ -89,94 +101,20 @@ function uygulamaV2() {
     }
   };
 
-  // Metni modele uygula fonksiyonu
-  /*  const applyTextToModel = () => {
-    if (modelRef.current && selectedPart) {
-      const partTexts = texts.filter((text) => text.meshName === selectedPart);
-      if (partTexts.length === 0) {
-        console.log("No texts to apply for the selected part");
-        return;
-      }
-
-      modelRef.current.traverse((child) => {
-        if (child.isMesh && child.name === selectedPart) {
-          const canvas = document.createElement("canvas");
-          const ctx = canvas.getContext("2d");
-          canvas.width = 512;
-          canvas.height = 512;
-
-          // Metni canvas'a ekle
-          ctx.font = `${partTexts[0].fontSize}px ${partTexts[0].fontFamily}`;
-          ctx.fillStyle = partTexts[0].textColor;
-          ctx.fillText(
-            partTexts[0].content,
-            partTexts[0].offsetX,
-            partTexts[0].offsetY
-          );
-
-          // Texture'u oluştur
-          const texture = new THREE.CanvasTexture(canvas);
-          texture.encoding = THREE.sRGBEncoding;
-          texture.flipY = false;
-          texture.needsUpdate = true;
-
-          const newMaterial = new THREE.MeshBasicMaterial({ map: texture });
-          child.material = newMaterial; // Yeni materyali mesh'e atıyoruz
-          child.material.needsUpdate = true; // Material'in güncellenmesini sağlıyoruz
-        }
-      });
-    }
-  }; */
-  const applyTextToModel = () => {
-    if (modelRef.current && selectedPart) {
-      const partTexts = texts.filter((text) => text.meshName === selectedPart);
-      if (partTexts.length === 0) {
-        console.log("No texts to apply for the selected part");
-        return;
-      }
-
-      modelRef.current.traverse((child) => {
-        if (child.isMesh && child.name === selectedPart) {
-          const canvas = document.createElement("canvas");
-          const ctx = canvas.getContext("2d");
-          canvas.width = 512;
-          canvas.height = 512;
-
-          // Arka planı şeffaf hale getirelim (clearRect ile temizleyerek)
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-          // Metin çizimi
-          partTexts.forEach((text) => {
-            ctx.font = `${text.fontSize}px ${text.fontFamily}`;
-            ctx.fillStyle = text.textColor;
-            ctx.fillText(text.content, text.offsetX, text.offsetY);
-
-            // Eğer outline varsa onu da çizelim
-            if (text.outlineWidth > 0) {
-              ctx.strokeStyle = text.outlineColor;
-              ctx.lineWidth = text.outlineWidth;
-              ctx.strokeText(text.content, text.offsetX, text.offsetY);
-            }
-          });
-
-          // Canvas'ı texture olarak dönüştürelim
-          const texture = new THREE.CanvasTexture(canvas);
-          texture.encoding = THREE.sRGBEncoding;
-          texture.flipY = false; // Y ekseni ters çevrili olmasın
-          texture.needsUpdate = true;
-
-          // Yeni materyal oluşturalım ve mesh'e uygulayalım
-          const newMaterial = new THREE.MeshBasicMaterial({
-            map: texture,
-            transparent: true, // Arka planın şeffaf olmasını sağlıyoruz
-          });
-          child.material = newMaterial; // Yeni materyali mesh'e atıyoruz
-          child.material.needsUpdate = true;
-        }
-      });
+  // Metni resmin üzerine koyan buton işlevi
+  const handleApplyTextOnImage = () => {
+    if (selectedPart) {
+      applyCombinedTextureToModel(); // Metni ve resmi birleştirip yüzeye uygula
     }
   };
-  /* combine fonksiyonu eklencek. + useeffect ile render*/
+
+  const handleApplyImage = () => {
+    if (selectedImage && selectedPart) {
+      setImageForMesh(selectedPart, selectedImage); // Resmi seçilen yüzeye kaydediyoruz
+      applyCombinedTextureToModel(); // Resmi yüzeye uygula
+    }
+  };
+
   return (
     <div className="w-screen h-screen gap-4 flex items-center p-4">
       <div
@@ -211,7 +149,7 @@ function uygulamaV2() {
               />
             </div>
             <button
-              onClick={applyImageToModel}
+              onClick={handleApplyImage}
               className="text-white font-semibold bg-green-600 hover:bg-green-300 w-[150px] py-2 rounded-xl text-sm"
             >
               Resmi Yüzeye Ekle
@@ -268,11 +206,12 @@ function uygulamaV2() {
               Metin Ekle
             </button>
 
+            {/* Yeni "Metni Resmin Üstüne Koy" butonu */}
             <button
-              onClick={applyTextToModel}
+              onClick={handleApplyTextOnImage}
               className="text-white font-semibold bg-green-600 hover:bg-green-300 w-1/2 py-1 rounded-xl mt-2 text-sm"
             >
-              Metni Yüzeye Ekle
+              Metni Resmin Üstüne Koy
             </button>
           </div>
         </div>
