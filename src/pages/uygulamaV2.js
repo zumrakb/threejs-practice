@@ -90,7 +90,7 @@ function uygulamaV2() {
   };
 
   // Metni modele uygula fonksiyonu
-  const applyTextToModel = () => {
+  /*  const applyTextToModel = () => {
     if (modelRef.current && selectedPart) {
       const partTexts = texts.filter((text) => text.meshName === selectedPart);
       if (partTexts.length === 0) {
@@ -126,8 +126,57 @@ function uygulamaV2() {
         }
       });
     }
-  };
+  }; */
+  const applyTextToModel = () => {
+    if (modelRef.current && selectedPart) {
+      const partTexts = texts.filter((text) => text.meshName === selectedPart);
+      if (partTexts.length === 0) {
+        console.log("No texts to apply for the selected part");
+        return;
+      }
 
+      modelRef.current.traverse((child) => {
+        if (child.isMesh && child.name === selectedPart) {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          canvas.width = 512;
+          canvas.height = 512;
+
+          // Arka planı şeffaf hale getirelim (clearRect ile temizleyerek)
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          // Metin çizimi
+          partTexts.forEach((text) => {
+            ctx.font = `${text.fontSize}px ${text.fontFamily}`;
+            ctx.fillStyle = text.textColor;
+            ctx.fillText(text.content, text.offsetX, text.offsetY);
+
+            // Eğer outline varsa onu da çizelim
+            if (text.outlineWidth > 0) {
+              ctx.strokeStyle = text.outlineColor;
+              ctx.lineWidth = text.outlineWidth;
+              ctx.strokeText(text.content, text.offsetX, text.offsetY);
+            }
+          });
+
+          // Canvas'ı texture olarak dönüştürelim
+          const texture = new THREE.CanvasTexture(canvas);
+          texture.encoding = THREE.sRGBEncoding;
+          texture.flipY = false; // Y ekseni ters çevrili olmasın
+          texture.needsUpdate = true;
+
+          // Yeni materyal oluşturalım ve mesh'e uygulayalım
+          const newMaterial = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true, // Arka planın şeffaf olmasını sağlıyoruz
+          });
+          child.material = newMaterial; // Yeni materyali mesh'e atıyoruz
+          child.material.needsUpdate = true;
+        }
+      });
+    }
+  };
+  /* combine fonksiyonu eklencek. + useeffect ile render*/
   return (
     <div className="w-screen h-screen gap-4 flex items-center p-4">
       <div
