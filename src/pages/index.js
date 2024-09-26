@@ -40,12 +40,7 @@ export default function Home() {
           >
             PRACTICE V3
           </Link>
-          <p className="text-gray-500 text-sm pl-1">
-            PracticeV3: See different shapes of THREE JS and CANNON-ES library
-            (physics world). Each shape has different type of gravity and
-            shadows. (THREE JS ve CANNON-ES kütüphanesi ile farklı şekilleri
-            görün. Her şeklin farklı bir yerçekimi ve gölge türü vardır.)
-          </p>
+          <p className="text-gray-500 text-sm pl-1">PracticeV3: GLTF Loader</p>
         </div>
 
         <div className="w-full h-fit flex flex-col gap-2 items-start">
