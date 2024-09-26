@@ -1,223 +1,244 @@
-import React, { useRef, useState, useEffect } from "react";
+"use client";
+import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import ThreeScene from "../components/uygulamaV3/ThreeScene";
-import ModelLoader from "../components/uygulamaV3/ModelLoader";
-import RaycasterControls from "../components/uygulamaV3/RaycasterControls";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import {
-  addText,
-  createCombinedTexture,
-  getTextsForMesh,
-  setImageForMesh,
-  getImageForMesh,
-} from "../components/uygulamaV2/TextFunctions.js";
+  onMouseClick,
+  onMouseDown,
+  onMouseMove,
+  onMouseUp,
+} from "../components/uygulamaV3/Mouse";
 
-function uygulamaV3() {
-  const mountRef = useRef(null);
-  const cameraRef = useRef(null);
+const uygulamaV3 = () => {
   const sceneRef = useRef(null);
-  const controlsRef = useRef(null);
-  const modelRef = useRef(null);
-
-  const [selectedImage, setSelectedImage] = useState(null); // Seçilen resim
-  const [selectedPart, setSelectedPart] = useState(null); // Seçilen yüzey
-  const [meshNames, setMeshNames] = useState([]);
-  const [modelLoaded, setModelLoaded] = useState(false);
-
-  const [newText, setNewText] = useState(""); // Metin ekleme inputu
-  const [texts, setTexts] = useState([]); // Eklenen metinler
+  const cameraRef = useRef(null);
+  const rendererRef = useRef(null);
+  const controlsRef = useRef(null); // OrbitControls reference
+  const selectedMeshRef = useRef(null);
+  const usedImagesRef = useRef([]); // Track used images
+  const decalMeshesRef = useRef([]); // Store decal meshes
+  const initialMousePositionRef = useRef({ x: 0, y: 0 });
+  const [images, setImages] = useState([]);
+  const [controlModel, setControlModel] = useState(true);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [windowSize, setWindowSize] = useState({ w: 0, h: 0 });
 
   useEffect(() => {
-    if (modelLoaded && modelRef.current && meshNames.length === 0) {
-      const meshes = [];
-      modelRef.current.traverse((child) => {
-        if (child.isMesh) {
-          meshes.push(child.name);
-        }
-      });
-      setMeshNames(meshes);
-      console.log("Mesh Names:", meshes);
+    const scene = new THREE.Scene();
+    sceneRef.current = scene;
+
+    const camera = new THREE.PerspectiveCamera(
+      60,
+      window.innerWidth / window.innerHeight,
+      0.1, // bu değer 1 idi. 0.1 yaptım ve 3d model büyütüp küçültünce model kaybolmadı
+      1000
+    );
+    camera.position.set(0, 0, 1.4);
+    camera.lookAt(0, 0, 0);
+    cameraRef.current = camera;
+
+    const renderer = new THREE.WebGLRenderer({
+      alpha: true,
+      antialias: true,
+      physicallyCorrectLights: true,
+      powerPreference: "high-performance",
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+
+    if (rendererRef.current) {
+      rendererRef.current.appendChild(renderer.domElement);
     }
-  }, [modelLoaded, modelRef, meshNames]);
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setSelectedImage(event.target.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+    // Create OrbitControls and link them to the camera
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.25; // Smoothness of controls
+    controlsRef.current = controls;
 
-  const selectPart = (part) => {
-    console.log("Selected part:", part);
-    setSelectedPart(part);
-    setTexts(getTextsForMesh(part)); // Seçilen yüzeye ait metinleri çekiyoruz
-    setSelectedImage(getImageForMesh(part)); // Seçilen yüzeye ait resmi çekiyoruz
-  };
+    const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+    const directLight = new THREE.DirectionalLight(0xffffff, 1);
+    directLight.position.set(5, 5, 7.5);
+    scene.add(directLight, ambient);
 
-  // Resmi ve metni modele uygula
-  const applyCombinedTextureToModel = () => {
-    if (
-      (selectedImage || texts.length > 0) &&
-      modelRef.current &&
-      selectedPart
-    ) {
-      modelRef.current.traverse((child) => {
-        if (child.isMesh && child.name === selectedPart) {
-          const combinedTexture = createCombinedTexture(
-            selectedImage,
-            texts,
-            1024,
-            1024
-          );
+    setWindowSize({ w: window.innerWidth, h: window.innerHeight });
 
-          const newMaterial = new THREE.MeshBasicMaterial({
-            map: combinedTexture,
-            transparent: true,
-          });
+    const loader = new GLTFLoader();
+    loader.load(
+      "bag.glb",
+      (gltf) => {
+        const model = gltf.scene;
+        model.position.set(0, 0, 0);
+        scene.add(model);
 
-          child.material = newMaterial;
-          child.material.needsUpdate = true;
-        }
-      });
-    }
-  };
+        // Add previously placed decals back to the scene
+        decalMeshesRef.current.forEach((decal) => {
+          scene.add(decal);
+        });
+      },
+      undefined,
+      (error) => {
+        console.error("GLTF yükleme hatası:", error);
+      }
+    );
 
-  const handleAddText = () => {
-    if (newText.trim() && selectedPart) {
-      const newTextObject = addText(
-        newText,
-        setTexts,
-        40,
-        "#000000",
-        "Arial",
-        "#000000",
-        0,
-        selectedPart
+    const animate = () => {
+      requestAnimationFrame(animate);
+      controls.update(); // Update OrbitControls in the animation loop
+      renderer.render(scene, camera);
+    };
+
+    animate();
+
+    // Mouse events
+    const handleClick = (event) => {
+      onMouseClick(
+        event,
+        camera,
+        scene,
+        renderer,
+        selectedImage,
+        usedImagesRef,
+        decalMeshesRef,
+        selectedMeshRef
       );
-      setNewText(""); // Metin inputunu temizliyoruz
+    };
+
+    const handleDown = (event) => {
+      onMouseDown(
+        event,
+        camera,
+        renderer,
+        decalMeshesRef,
+        selectedMeshRef,
+        initialMousePositionRef
+      );
+    };
+
+    const handleMove = (event) => {
+      onMouseMove(
+        event,
+        camera,
+        renderer,
+        scene,
+        windowSize,
+        selectedMeshRef,
+        initialMousePositionRef,
+        selectedImage
+      );
+    };
+
+    const handleUp = (event) => {
+      onMouseUp(event, selectedMeshRef);
+    };
+
+    window.addEventListener("click", handleClick);
+    window.addEventListener("mousedown", handleDown);
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+
+    return () => {
+      window.removeEventListener("click", handleClick);
+      window.removeEventListener("mousedown", handleDown);
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+      if (rendererRef.current) {
+        rendererRef.current.removeChild(renderer.domElement);
+      }
+    };
+  }, [selectedImage]);
+
+  // useEffect to update controls.enabled when controlModel changes
+  useEffect(() => {
+    if (controlsRef.current) {
+      controlsRef.current.enabled = controlModel;
     }
+  }, [controlModel]);
+
+  const handleImageChange = (event) => {
+    // Prevent default behavior
+    event.preventDefault();
+    event.stopPropagation();
+
+    const files = Array.from(event.target.files);
+    const imagePromises = files.map((file) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          resolve(reader.result);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    });
+
+    Promise.all(imagePromises)
+      .then((newImages) =>
+        setImages((prevImages) => [...prevImages, ...newImages])
+      )
+      .catch((error) => console.error("Resim yükleme hatası:", error));
   };
 
-  // Metni resmin üzerine koyan buton işlevi
-  const handleApplyTextOnImage = () => {
-    if (selectedPart) {
-      applyCombinedTextureToModel(); // Metni ve resmi birleştirip yüzeye uygula
-    }
-  };
-
-  const handleApplyImage = () => {
-    if (selectedImage && selectedPart) {
-      setImageForMesh(selectedPart, selectedImage); // Resmi seçilen yüzeye kaydediyoruz
-      applyCombinedTextureToModel(); // Resmi yüzeye uygula
-    }
+  const handleImageSelect = (image) => {
+    // Prevent default refresh behavior
+    setSelectedImage(image);
   };
 
   return (
-    <div className="w-screen h-screen gap-4 flex items-center p-4">
+    <div className="flex w-screen h-screen">
       <div
-        ref={mountRef}
-        className="w-3/4 h-full overflow-hidden border border-orange-500 rounded-xl"
-      >
-        <ThreeScene
-          mountRef={mountRef}
-          cameraRef={cameraRef}
-          sceneRef={sceneRef}
-          controlsRef={controlsRef}
-        />
-        <ModelLoader
-          sceneRef={sceneRef}
-          modelRef={modelRef}
-          setModelLoaded={setModelLoaded}
-        />
-        <RaycasterControls cameraRef={cameraRef} sceneRef={sceneRef} />
-      </div>
-
-      <div className="w-1/4 h-full rounded-xl pt-2">
-        <div className="h-fit border-b border-b-gray-400 pb-2">
-          <h3 className="text-orange-500 font-semibold mb-2">
-            RESİM EKLEME KISMI:
-          </h3>
-          <div className="flex gap-1 justify-between items-center">
-            <div className="p-2 border border-gray-200 w-[200px] text-xs rounded-xl">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-              />
-            </div>
-            <button
-              onClick={handleApplyImage}
-              className="text-white font-semibold bg-green-600 hover:bg-green-300 w-[150px] py-2 rounded-xl text-sm"
-            >
-              Resmi Yüzeye Ekle
-            </button>
-          </div>
-
-          <div className="flex flex-wrap gap-2 mt-4 border-y border-y-gray-200 py-4">
-            {meshNames.length > 0 ? (
-              meshNames.map((meshName) => (
-                <button
-                  key={meshName}
-                  onClick={() => selectPart(meshName)}
-                  className={`${
-                    selectedPart === meshName ? "bg-blue-500" : "bg-orange-500"
-                  } text-white font-semibold hover:bg-orange-300 px-2 py-0.5 rounded-xl text-xs`}
-                >
-                  {meshName.toUpperCase()}
-                </button>
-              ))
-            ) : (
-              <div>Mesh isimleri yükleniyor...</div>
-            )}
-          </div>
-
-          <div className="mt-4 text-red-500 font-semibold">
-            {selectedImage ? (
+        ref={rendererRef}
+        className=" w-3/4 bg-slate-100 border-r border-r-black border-r-2"
+      />
+      <div className="bg-slate-100 p-4 w-1/4 flex flex-col gap-4">
+        <div className="w-full border border-slate-300 p-2 rounded-xl">
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImageChange}
+          />
+        </div>
+        <div className="flex flex-col gap-2 p-2 border border-slate-300 rounded-xl">
+          <h6 className="text-gray-500 font-semibold">Yüklenen resimler:</h6>
+          <div className="flex flex-wrap gap-4">
+            {images.map((image, index) => (
               <img
-                src={selectedImage}
-                alt="Preview"
-                className="h-60 object-cover"
+                key={index}
+                src={image}
+                alt={`Resim ${index + 1}`}
+                onClick={() => handleImageSelect(image)}
+                className="rounded-xl"
+                style={{
+                  height: "200px",
+                  border:
+                    selectedImage === image
+                      ? "2px solid blue"
+                      : "1px solid gray",
+                  marginTop: "10px",
+                  cursor: "pointer",
+                }}
               />
-            ) : (
-              "Önizleme yok"
-            )}
+            ))}
           </div>
         </div>
-
-        <div className="h-fit mt-4 border-b border-b-gray-400 pb-2">
-          <h3 className="text-orange-500 font-semibold mb-2">
-            METİN EKLEME KISMI:
-          </h3>
-          <input
-            type="text"
-            value={newText}
-            onChange={(e) => setNewText(e.target.value)}
-            className="border border-gray-300 p-2 rounded w-full"
-            placeholder="Yeni metin girin"
-          />
-          <div className="w-full flex gap-2">
-            <button
-              onClick={handleAddText}
-              className="text-white font-semibold bg-blue-500 hover:bg-blue-300 w-1/2 py-1 rounded-xl mt-2 text-sm"
-            >
-              Metin Ekle
-            </button>
-
-            {/* Yeni "Metni Resmin Üstüne Koy" butonu */}
-            <button
-              onClick={handleApplyTextOnImage}
-              className="text-white font-semibold bg-green-600 hover:bg-green-300 w-1/2 py-1 rounded-xl mt-2 text-sm"
-            >
-              Metni Resmin Üstüne Koy
-            </button>
-          </div>
+        <div className="w-full mt-4 flex gap-2">
+          <button
+            className="bg-red-500 text-white font-semibold w-1/2 rounded-xl text-center py-1 hover:bg-black/50"
+            onClick={() => setControlModel(false)}
+          >
+            MODELİ KİLİTLE
+          </button>
+          <button
+            className="bg-green-500 text-white font-semibold w-1/2 rounded-xl text-center py-1 hover:bg-black/50"
+            onClick={() => setControlModel(true)}
+          >
+            MODELİ AÇ
+          </button>
         </div>
       </div>
     </div>
   );
-}
+};
 
 export default uygulamaV3;
