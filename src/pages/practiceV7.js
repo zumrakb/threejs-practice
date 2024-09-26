@@ -8,7 +8,7 @@ import {
   onMouseDown,
   onMouseMove,
   onMouseUp,
-} from "../components/uygulamaV3/Mouse";
+} from "../components/practiceV7/Mouse";
 
 const uygulamaV3 = () => {
   // Referansları ve durumları (state) tanımlıyoruz

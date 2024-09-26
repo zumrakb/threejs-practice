@@ -1,15 +1,15 @@
 import React, { useRef, useState, useEffect } from "react";
 import * as THREE from "three";
-import ThreeScene from "../components/uygulamaV2/ThreeScene";
-import ModelLoader from "../components/uygulamaV2/ModelLoader";
-import RaycasterControls from "../components/uygulamaV2/RaycasterControls";
+import ThreeScene from "../components/practiceV6/ThreeScene";
+import ModelLoader from "../components/practiceV6/ModelLoader";
+import RaycasterControls from "../components/practiceV6/RaycasterControls";
 import {
   addText,
   createCombinedTexture,
   getTextsForMesh,
   setImageForMesh,
   getImageForMesh,
-} from "../components/uygulamaV2/TextFunctions.js";
+} from "../components/practiceV6/TextFunctions.js";
 
 function uygulamaV2() {
   const mountRef = useRef(null);
