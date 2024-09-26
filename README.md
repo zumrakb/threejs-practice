@@ -1,4 +1,4 @@
-# Three JS Practices 
+# Three JS Pratikleri 
 
 ## Kısa İçerik Videosu:
 
