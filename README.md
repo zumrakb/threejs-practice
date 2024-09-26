@@ -2,6 +2,14 @@
 
 Bu projede aşağıdaki adımları içeren görseller ve videolar yer almaktadır. Adım adım ilerleyerek proje süreçlerini takip edebilirsiniz.
 
+## Kısa İçerik Videosu:
+
+
+
+https://github.com/user-attachments/assets/3b438164-4070-41f0-906e-4f93ffb77dd1
+
+
+
 ## Butonların İçerikleri:
 
 1. 
