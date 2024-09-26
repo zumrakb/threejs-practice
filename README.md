@@ -6,8 +6,9 @@ Bu projede aşağıdaki adımları içeren görseller ve videolar yer almaktadı
 
 1. 
    
+<img src="[https://github.com/user-attachments/assets/be36dd88-8541-4f4c-9655-e81d6cba5ab5](https://github.com/user-attachments/assets/d254f862-194e-4356-92a7-3944da3b9bda)" alt="Adım 1 Görseli" width="600" height="400">
 
-https://github.com/user-attachments/assets/d254f862-194e-4356-92a7-3944da3b9bda
+
 
 
 
