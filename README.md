@@ -1,6 +1,4 @@
-# Proje Adı
-
-Bu projede aşağıdaki adımları içeren görseller ve videolar yer almaktadır. Adım adım ilerleyerek proje süreçlerini takip edebilirsiniz.
+# Three JS Practices 
 
 ## Kısa İçerik Videosu:
 
