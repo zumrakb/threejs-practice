@@ -2,25 +2,44 @@
 
 Bu projede aşağıdaki adımları içeren görseller ve videolar yer almaktadır. Adım adım ilerleyerek proje süreçlerini takip edebilirsiniz.
 
-## İçerik
+## Butonların İçerikleri:
 
-1. **Adım 1 - Görsel veya Video 1**  
-   ![Adım 1](https://github.com/user-attachments/assets/be36dd88-8541-4f4c-9655-e81d6cba5ab5)
+1. **1**  
+   
 
-2. **Adım 2 - Görsel veya Video 2**  
-   ![Adım 2](https://github.com/user-attachments/assets/15917377-7930-4047-9167-cd1a31e6135c)
+https://github.com/user-attachments/assets/d254f862-194e-4356-92a7-3944da3b9bda
 
-3. **Adım 3 - Görsel veya Video 3**  
-   ![Adım 3](https://github.com/user-attachments/assets/ed403138-84af-43d9-88f0-6d78c9fbd2f6)
 
-4. **Adım 4 - Görsel veya Video 4**  
-   ![Adım 4](https://github.com/user-attachments/assets/f2e803b3-fe92-4455-a4a2-dfbd76fcb47d)
 
-5. **Adım 5 - Görsel veya Video 5**  
-   ![Adım 5](https://github.com/user-attachments/assets/89048bec-7eff-46ed-9a9f-dc83bcc27d9c)
+2. **2**  
+   
 
-6. **Adım 6 - Görsel veya Video 6**  
-   ![Adım 6](https://github.com/user-attachments/assets/1437e9d2-8174-46eb-aca5-86fa6e20f2d6)
+https://github.com/user-attachments/assets/ed897ab6-d18d-4eb4-a28f-0892ce47e6ac
 
-7. **Adım 7 - Görsel veya Video 7**  
-   ![Adım 7](https://github.com/user-attachments/assets/51c56c7b-0c37-40e8-9f80-c0a95b3c8d07)
+
+
+3. **3**  
+![v3](https://github.com/user-attachments/assets/04903d25-633b-4cf6-ae93-dde7ffdcad04)
+
+
+4. **4**  
+
+
+https://github.com/user-attachments/assets/61dfcd37-c3af-4ff9-acf0-21a7d2fb846c
+
+
+
+5. **5**  
+  ![v5](https://github.com/user-attachments/assets/cb080383-7bad-4460-9e03-65a9a9b4d5fd)
+
+
+6. **6**  
+![v6](https://github.com/user-attachments/assets/b7c7734d-a558-4152-a432-7ba728e8a365)
+
+
+7. **7**  
+
+
+https://github.com/user-attachments/assets/66dee707-f8ef-46f7-bcfe-31c88e2c20d7
+
+
