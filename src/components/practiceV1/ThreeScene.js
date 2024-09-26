@@ -19,6 +19,34 @@ const ThreeScene = forwardRef((_, ref) => {
   const [textMeshes, setTextMeshes] = useState([]);
   const [selectedText, setSelectedText] = useState(null);
   const [textSize, setTextSize] = useState(0.5);
+  let autoRotate = false;
+
+  // Auto rotate functions
+  const startAutoRotate = () => {
+    autoRotate = true;
+  };
+
+  const stopAutoRotate = () => {
+    autoRotate = false;
+  };
+
+  // Show the cube from the top view
+  const showFromTop = () => {
+    cameraCube.current.position.set(0, 10, 0); // Move the camera to the top
+    cameraCube.current.lookAt(0, 0, 0); // Point the camera to the center
+    controlsRefCube.current.update(); // Update controls to reflect the new camera position
+  };
+
+  // Ref to expose functions
+  useEffect(() => {
+    if (ref) {
+      ref.current = {
+        startAutoRotate,
+        stopAutoRotate,
+        showFromTop, // Expose the showFromTop function
+      };
+    }
+  }, [ref]);
 
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
@@ -27,7 +55,7 @@ const ThreeScene = forwardRef((_, ref) => {
   useEffect(() => {
     if (!mountRefCube.current) return;
 
-    // Three.js sahnesi oluştur
+    // Three.js scene setup
     sceneCube.current = new THREE.Scene();
     cameraCube.current = new THREE.PerspectiveCamera(
       45,
@@ -51,18 +79,18 @@ const ThreeScene = forwardRef((_, ref) => {
     rendererCube.shadowMap.type = THREE.PCFSoftShadowMap;
     mountRefCube.current.appendChild(rendererCube.domElement);
 
-    // OrbitControls ekleyin
+    // OrbitControls
     controlsRefCube.current = new OrbitControls(
       cameraCube.current,
       rendererCube.domElement
     );
     controlsRefCube.current.enableDamping = true;
 
-    // Cannon.js Dünya ve Fizik Ayarları
+    // Cannon.js world and physics setup
     const world = new CANNON.World();
     world.gravity.set(0, -9.82, 0);
 
-    // Zemin için fizik gövdesi
+    // Ground plane with physics
     const planeGeometry = new THREE.PlaneGeometry(20, 20);
     const planeMaterial = new THREE.ShadowMaterial({
       color: 0x000000,
@@ -83,46 +111,41 @@ const ThreeScene = forwardRef((_, ref) => {
     planeBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
     world.addBody(planeBody);
 
-    // Küp için fizik gövdesi
+    // Cube setup with physics
     const geometry = new THREE.BoxGeometry(3, 3, 3);
-    const materials = [
-      new THREE.MeshStandardMaterial({ color: "#00ff83" }),
-      new THREE.MeshStandardMaterial({ color: "#00ff83" }),
-      new THREE.MeshStandardMaterial({ color: "#00ff83" }),
-      new THREE.MeshStandardMaterial({ color: "#00ff83" }),
-      new THREE.MeshStandardMaterial({ color: "#00ff83" }),
-      new THREE.MeshStandardMaterial({ color: "#00ff83" }),
-    ];
-
+    const materials = Array(6).fill(
+      new THREE.MeshStandardMaterial({ color: "#00ff83" })
+    );
     const mesh = new THREE.Mesh(geometry, materials);
     mesh.castShadow = true;
     sceneCube.current.add(mesh);
     meshRef.current = mesh;
     draggableObjects.current.push(mesh);
 
-    // Ambient Light
+    // Lights
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
     sceneCube.current.add(ambientLight);
 
-    // Directional Light
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
     directionalLight.position.set(5, 10, 5);
     directionalLight.castShadow = true;
     sceneCube.current.add(directionalLight);
 
-    // Drag Controls oluşturulması
+    // Drag controls
     updateDragControls();
 
     // Animation loop
     const animate = () => {
-      world.step(1 / 60);
+      if (autoRotate) {
+        meshRef.current.rotation.y += 0.01; // Auto-rotate mesh
+      }
       controlsRefCube.current.update();
       rendererCube.render(sceneCube.current, cameraCube.current);
       requestAnimationFrame(animate);
     };
     animate();
 
-    // Mouse hareket olaylarını ve tıklamaları dinleyin
+    // Mouse events
     if (typeof window !== "undefined") {
       window.addEventListener("mousemove", onDocumentMouseMove);
       window.addEventListener("click", onDocumentMouseClick);
@@ -130,7 +153,10 @@ const ThreeScene = forwardRef((_, ref) => {
 
     // Cleanup on unmount
     return () => {
-      if (mountRefCube.current) {
+      if (
+        mountRefCube.current &&
+        rendererCube.domElement.parentElement === mountRefCube.current
+      ) {
         mountRefCube.current.removeChild(rendererCube.domElement);
       }
       controlsRefCube.current.dispose();
@@ -142,15 +168,6 @@ const ThreeScene = forwardRef((_, ref) => {
     };
   }, [mountRefCube]);
 
-  /* onDocumentMouseMove:
-Fare hareketi işleyicisi.
-event.preventDefault();:
-Varsayılan fare olaylarını engeller. (Örneğin, tarayıcıda sayfanın seçilmesini engeller.)
-const rect = mountRefCube.current.getBoundingClientRect();:
-Sahnenin (renderer'ın) yerleşim bilgilerini alır. Bu, fare konumunu hesaplamak için kullanılır.
-mouse.x ve mouse.y hesaplamaları:
-Fare pozisyonunu normalize eder. (-1, 1) aralığına getirir ki, Three.js'deki raycasting işlemleri için uygun hale gelsin.
-jsx */
   const onDocumentMouseMove = (event) => {
     event.preventDefault();
     const rect = mountRefCube.current.getBoundingClientRect();
@@ -158,45 +175,19 @@ jsx */
     mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
   };
 
-  /* onDocumentMouseClick:
-Fare tıklama işleyicisi.
-if (event.target.tagName === "INPUT") { ... }:
-Eğer tıklama bir <input> alanında gerçekleştiyse, işlem durdurulur (örneğin, kullanıcı metin alanına tıkladığında sahnedeki nesnelerin seçilmesini engeller).
-raycaster.setFromCamera(mouse, cameraCube.current);:
-Fare pozisyonuna göre bir ışın demeti (ray) oluşturur. Bu ışın, kameradan sahneye doğru yönlendirilir.
-const intersects = raycaster.intersectObjects(...):
-Işının sahnedeki nesnelerle kesiştiği (çarpıştığı) noktaları kontrol eder.
-sceneCube.current.children: Sahnedeki tüm çocuk nesneler.
-true: Çocuk nesnelerin alt nesneleriyle de kontrol edilmesini sağlar.
-if (intersects.length > 0) { ... }:
-Eğer bir veya daha fazla nesne ile kesişme varsa:
-const clickedMesh = intersects[0].object;: Tıklanan ilk nesneyi (mesh) alır.
-console.log(...): Tıklanan mesh ve kullanıcı verisi (userData.text) konsola yazdırılır.
-setSelectedText(clickedMesh);: Tıklanan metin nesnesini seçili nesne olarak ayarlar.
-setUserText(clickedMesh.userData.text);: Tıklanan metni, metin giriş alanına koyar.
-else { ... }:
-Eğer tıklanan bir nesne yoksa, konsola mesaj yazdırır ("No text mesh was clicked."). */
   const onDocumentMouseClick = (event) => {
-    if (event.target.tagName === "INPUT") {
-      // Eğer tıklama bir input alanındaysa, işlemi durdur
-      return;
-    }
+    if (event.target.tagName === "INPUT") return;
 
     raycaster.setFromCamera(mouse, cameraCube.current);
 
-    // Sahnedeki tüm nesneler için kesişme kontrolü yap
     const intersects = raycaster.intersectObjects(
       sceneCube.current.children,
       true
     );
-
     if (intersects.length > 0) {
       const clickedMesh = intersects[0].object;
-      console.log("Clicked Mesh:", clickedMesh); // Tıklanan Mesh'i göster
-      console.log("Clicked Mesh's User Data Text:", clickedMesh.userData.text); // Tıklanan Mesh'in userData.text değerini göster
-
       setSelectedText(clickedMesh);
-      setUserText(clickedMesh.userData.text); // Tıklanan metni input alanına getir
+      setUserText(clickedMesh.userData.text);
     } else {
       console.log("No text mesh was clicked.");
     }
@@ -282,18 +273,13 @@ Eğer tıklanan bir nesne yoksa, konsola mesaj yazdırır ("No text mesh was cli
       const newTextMesh = new THREE.Mesh(textGeometry, textMaterial);
       newTextMesh.position.set(0, 0, 0);
 
-      // Kullanıcı tarafından girilen metni userData'ya kaydedin
       newTextMesh.userData.text = userText;
 
       sceneCube.current.add(newTextMesh);
       draggableObjects.current.push(newTextMesh);
-      setTextMeshes((prevMeshes) => [...prevMeshes, newTextMesh]); // Text mesh'i ekleyin
+      setTextMeshes((prevMeshes) => [...prevMeshes, newTextMesh]);
       setSelectedText(newTextMesh);
 
-      console.log("All Text Meshes After Adding:", textMeshes);
-      console.log(
-        `User-entered text for new mesh: ${newTextMesh.userData.text}`
-      );
       updateDragControls();
     });
   };
@@ -301,10 +287,8 @@ Eğer tıklanan bir nesne yoksa, konsola mesaj yazdırır ("No text mesh was cli
   const handleUpdateText = () => {
     if (!selectedText) return;
 
-    // Güncellenmiş metni doğrudan seçili mesh'e uygula
     selectedText.userData.text = userText;
 
-    // Mevcut geometriyi sil ve yeni geometri oluştur
     const fontLoader = new FontLoader();
     fontLoader.load("/fonts.json", (font) => {
       const textGeometry = new TextGeometry(userText, {
@@ -314,20 +298,14 @@ Eğer tıklanan bir nesne yoksa, konsola mesaj yazdırır ("No text mesh was cli
       });
       textGeometry.translate(1.5, 0, 1.5);
 
-      selectedText.geometry.dispose(); // Eski geometriyi sil
-      selectedText.geometry = textGeometry; // Yeni geometri ata
-
-      console.log("Updated Text Mesh:", selectedText);
-      console.log(
-        `Updated text for selected mesh: ${selectedText.userData.text}`
-      );
+      selectedText.geometry.dispose();
+      selectedText.geometry = textGeometry;
     });
   };
 
   const handleDeleteText = () => {
     if (!selectedText) return;
 
-    console.log("Deleting Text Mesh:", selectedText); // Silinen Mesh'i göster
     sceneCube.current.remove(selectedText);
     draggableObjects.current = draggableObjects.current.filter(
       (obj) => obj !== selectedText
@@ -341,79 +319,81 @@ Eğer tıklanan bir nesne yoksa, konsola mesaj yazdırır ("No text mesh was cli
   };
 
   return (
-    <>
-      <div ref={mountRefCube} className="w-full h-[600px] mb-2" />
-      <div className="p-4 border border-gray-300 rounded-lg max-w-sm bg-gray-100 mt-4">
-        <h3 className="mb-2 text-lg font-bold">Text Controls</h3>
-        <input
-          type="text"
-          value={userText}
-          onChange={(e) => setUserText(e.target.value)}
-          placeholder="Enter text"
-          className="mb-2 w-full p-2 border border-gray-300 rounded"
-          onClick={(e) => e.stopPropagation()} // input alanına tıklama olayını durdurun
-        />
-        <button
-          onClick={handleAddTextToCube}
-          className="mb-2 w-full p-2 bg-orange-500 text-white rounded hover:bg-orange-600"
-        >
-          Add Text
-        </button>
-        <button
-          onClick={handleUpdateText}
-          className="mb-2 w-full p-2 bg-orange-500 text-white rounded hover:bg-orange-600"
-        >
-          Update Text
-        </button>
-        <button
-          onClick={handleDeleteText}
-          className="w-full p-2 bg-red-500 text-white rounded hover:bg-red-600"
-        >
-          Delete Text
-        </button>
-
-        <label className="block mb-2">
-          Text Size:
+    <div className="flex justify-between w-full">
+      <div ref={mountRefCube} className="w-full h-[600px]" />
+      <div className="flex flex-col gap-4 my-4 ml-4">
+        <div className="p-4 border border-gray-500 rounded-lg max-w-sm bg-gray-100 h-full">
+          <h3 className="mb-2 text-lg font-bold">Text Controls</h3>
           <input
-            type="range"
-            min="0.1"
-            max="2"
-            step="0.1"
-            value={textSize}
-            onChange={(e) => setTextSize(parseFloat(e.target.value))}
-            className="w-full"
+            type="text"
+            value={userText}
+            onChange={(e) => setUserText(e.target.value)}
+            placeholder="Enter text"
+            className="mb-2 w-full p-2 border border-gray-300 rounded"
+            onClick={(e) => e.stopPropagation()}
           />
-        </label>
+          <button
+            onClick={handleAddTextToCube}
+            className="mb-2 w-full p-2 bg-orange-500 text-white rounded hover:bg-orange-600"
+          >
+            Add Text
+          </button>
+          <button
+            onClick={handleUpdateText}
+            className="mb-2 w-full p-2 bg-orange-500 text-white rounded hover:bg-orange-600"
+          >
+            Update Text
+          </button>
+          <button
+            onClick={handleDeleteText}
+            className="w-full p-2 bg-red-500 text-white rounded hover:bg-red-600"
+          >
+            Delete Text
+          </button>
+          <label className="block mb-2">
+            Text Size:
+            <input
+              type="range"
+              min="0.1"
+              max="2"
+              step="0.1"
+              value={textSize}
+              onChange={(e) => setTextSize(parseFloat(e.target.value))}
+              className="w-full"
+            />
+          </label>
+        </div>
+        <div className="p-4 border border-gray-500 rounded-lg max-w-sm bg-gray-100 h-full">
+          <h3 className="mb-2 text-lg font-bold">Texture Controls</h3>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFileInput}
+            className="mb-2"
+          />
+          <select
+            value={selectedTextureSurface}
+            onChange={(e) => setSelectedTextureSurface(e.target.value)}
+            className="mb-2 w-full p-2 border border-gray-300 rounded"
+          >
+            <option value="front">Front</option>
+            <option value="back">Back</option>
+            <option value="top">Top</option>
+            <option value="bottom">Bottom</option>
+            <option value="left">Left</option>
+            <option value="right">Right</option>
+          </select>
+          <button
+            onClick={() =>
+              applyTextureToSurface(selectedTextureSurface, texture)
+            }
+            className="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Apply Texture
+          </button>
+        </div>
       </div>
-
-      <div className="p-4 border border-gray-300 rounded-lg max-w-sm bg-gray-100 mt-4">
-        <h3 className="mb-2 text-lg font-bold">Texture Controls</h3>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleFileInput}
-          className="mb-2"
-        />
-        <select
-          value={selectedTextureSurface}
-          onChange={(e) => setSelectedTextureSurface(e.target.value)}
-          className="mb-2 w-full p-2 border border-gray-300 rounded"
-        >
-          <option value="front">Front</option>
-          <option value="back">Back</option>
-          <option value="top">Top</option>
-          <option value="bottom">Bottom</option>
-          <option value="left">Left</option>
-          <option value="right">Right</option>
-        </select>
-        <button
-          onClick={() => applyTextureToSurface(selectedTextureSurface, texture)}
-          className="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          Apply Texture
-        </button>
-      </div>
-    </>
+    </div>
   );
 });
 

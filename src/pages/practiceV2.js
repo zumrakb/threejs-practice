@@ -118,9 +118,13 @@ function ShapeCanvas({
     animate();
 
     // Cleanup function to remove previous instances
+    // Cleanup function to remove previous instances
     return () => {
-      while (canvasRef.current.firstChild) {
-        canvasRef.current.removeChild(canvasRef.current.firstChild);
+      if (canvasRef.current) {
+        // canvasRef'in geçerli olup olmadığını kontrol edin
+        while (canvasRef.current.firstChild) {
+          canvasRef.current.removeChild(canvasRef.current.firstChild);
+        }
       }
       renderer.dispose();
       controls.dispose();
@@ -140,7 +144,7 @@ function ShapeCanvas({
   return <div ref={canvasRef} className="inline-block w-full" />;
 }
 
-function DifferentShapesThreeScene() {
+function practiceV2() {
   const canvasWidth = 350; // Set your desired width
   const canvasHeight = 650; // Set your desired height
 
@@ -220,4 +224,4 @@ function DifferentShapesThreeScene() {
   );
 }
 
-export default DifferentShapesThreeScene;
+export default practiceV2;

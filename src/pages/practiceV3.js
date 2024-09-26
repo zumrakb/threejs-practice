@@ -116,18 +116,19 @@ function Upload3d() {
 
       {/* Ölçeklendirme input alanı ve butonlar */}
       <div style={{ position: "absolute", top: "10px", left: "10px" }}>
-        <label>Model Ölçeklendirme: </label>
-        <input
-          type="range"
-          min="0.01"
-          max="0.1"
-          step="0.01"
-          onChange={handleScaleChange}
-          defaultValue={0.05}
-        />
-        <div style={{ marginTop: "10px" }}>
-          <button onClick={startRotation}>Rotate</button>
-          <button onClick={stopRotation}>Stop Rotating</button>
+        <div className="mt-4 flex gap-2 ">
+          <button
+            onClick={startRotation}
+            className="bg-black text-white py-1 px-2 rounded-xl"
+          >
+            Rotate
+          </button>
+          <button
+            onClick={stopRotation}
+            className="bg-black text-white py-1 px-2 rounded-xl"
+          >
+            Stop Rotating
+          </button>
         </div>
       </div>
     </div>
