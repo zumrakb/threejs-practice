@@ -11,87 +11,110 @@ import {
 } from "../components/uygulamaV3/Mouse";
 
 const uygulamaV3 = () => {
-  const sceneRef = useRef(null);
-  const cameraRef = useRef(null);
-  const rendererRef = useRef(null);
-  const controlsRef = useRef(null); // OrbitControls reference
-  const selectedMeshRef = useRef(null);
-  const usedImagesRef = useRef([]); // Track used images
-  const decalMeshesRef = useRef([]); // Store decal meshes
-  const initialMousePositionRef = useRef({ x: 0, y: 0 });
-  const [images, setImages] = useState([]);
-  const [controlModel, setControlModel] = useState(true);
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [windowSize, setWindowSize] = useState({ w: 0, h: 0 });
+  // Referansları ve durumları (state) tanımlıyoruz
+  const sceneRef = useRef(null); // Sahne referansı
+  const cameraRef = useRef(null); // Kamera referansı
+  const rendererRef = useRef(null); // Renderer (çizer) referansı
+  const controlsRef = useRef(null); // Kamera kontrolleri (OrbitControls) referansı
+  const modelRef = useRef(null); // Yüklenen 3D modelin referansı
+  const selectedMeshRef = useRef(null); // Seçilen mesh (3D modelin parçası) referansı
+  const usedImagesRef = useRef([]); // Kullanılan resimleri saklayan referans
+  const decalMeshesRef = useRef([]); // Decal (çıkartma) meshlerini saklayan referans
+  const initialMousePositionRef = useRef({ x: 0, y: 0 }); // Fare ilk konumu referansı
+  const [images, setImages] = useState([]); // Yüklenen resimlerin durumu
+  const [controlModel, setControlModel] = useState(true); // Model kontrol durumu
+  const [selectedImage, setSelectedImage] = useState(null); // Seçilen resmin durumu
+  const [windowSize, setWindowSize] = useState({ w: 0, h: 0 }); // Pencere boyutu durumu
+  const [selectedColor, setSelectedColor] = useState("#ffffff"); // Seçilen rengin durumu
+  const [decalSizeFactor, setDecalSizeFactor] = useState(4000); // decal boyutu için. Başlangıçta 2000 olarak ayarlıyoruz
 
+  // Three.js sahnesini ve bileşenlerini kurmak için kullanılan useEffect
   useEffect(() => {
+    // Yeni bir sahne (scene) oluştur ve referansını kaydet
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
+    // Perspektif kamera oluştur ve sahnedeki konumunu ayarla
     const camera = new THREE.PerspectiveCamera(
-      60,
-      window.innerWidth / window.innerHeight,
-      0.1, // bu değer 1 idi. 0.1 yaptım ve 3d model büyütüp küçültünce model kaybolmadı
-      1000
+      60, // Görüş açısı (FOV)
+      window.innerWidth / window.innerHeight, // Ekran oranı
+      0.1, // Yakın kesme düzlemi
+      1000 // Uzak kesme düzlemi
     );
-    camera.position.set(0, 0, 1.4);
-    camera.lookAt(0, 0, 0);
-    cameraRef.current = camera;
+    camera.position.set(0, 0, 1.4); // Kamerayı sahneden uzaklaştır
+    camera.lookAt(0, 0, 0); // Kameranın bakacağı noktayı ayarla
+    cameraRef.current = camera; // Kamera referansını kaydet
 
+    // WebGL renderer (çizer) oluştur ve ekran boyutunu ayarla
     const renderer = new THREE.WebGLRenderer({
-      alpha: true,
-      antialias: true,
-      physicallyCorrectLights: true,
-      powerPreference: "high-performance",
+      alpha: true, // Arka planın şeffaf olması
+      antialias: true, // Kenarların yumuşak görünmesi
+      physicallyCorrectLights: true, // Fiziksel olarak doğru ışıklandırma
+      powerPreference: "high-performance", // Performans optimizasyonu
     });
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(window.innerWidth, window.innerHeight); // Renderer boyutunu pencereye göre ayarla
 
+    // Eğer renderer DOM elementine referans varsa, onu ekle
     if (rendererRef.current) {
       rendererRef.current.appendChild(renderer.domElement);
     }
 
-    // Create OrbitControls and link them to the camera
+    // OrbitControls (Kamera Kontrolleri) ekle ve ayarlarını yap
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.25; // Smoothness of controls
-    controlsRef.current = controls;
+    controls.enableDamping = true; // Yumuşatma etkinleştir
+    controls.dampingFactor = 0.25; // Yumuşatma oranı
+    controlsRef.current = controls; // Kontrollerin referansını kaydet
 
-    const ambient = new THREE.AmbientLight(0xffffff, 0.7);
-    const directLight = new THREE.DirectionalLight(0xffffff, 1);
-    directLight.position.set(5, 5, 7.5);
-    scene.add(directLight, ambient);
+    // Işıklandırmayı ekle (Ambient ve Directional Light)
+    const ambient = new THREE.AmbientLight(0xffffff, 0.7); // Ortam ışığı
+    const directLight = new THREE.DirectionalLight(0xffffff, 1); // Yönlü ışık
+    directLight.position.set(5, 5, 7.5); // Işığın konumunu ayarla
+    scene.add(directLight, ambient); // Işıkları sahneye ekle
 
+    // Pencere boyutunu duruma kaydet
     setWindowSize({ w: window.innerWidth, h: window.innerHeight });
 
+    // GLTFLoader kullanarak 3D modeli yükle
     const loader = new GLTFLoader();
     loader.load(
-      "bag.glb",
+      "bag.glb", // Yüklenecek modelin dosya yolu
       (gltf) => {
-        const model = gltf.scene;
-        model.position.set(0, 0, 0);
-        scene.add(model);
+        // Model yüklendiğinde bu fonksiyon çalışır
+        const model = gltf.scene; // Modeli sahneden al
+        model.position.set(0, 0, 0); // Modelin konumunu ayarla
+        scene.add(model); // Modeli sahneye ekle
+        modelRef.current = model; // Modelin referansını kaydet
 
-        // Add previously placed decals back to the scene
+        // Modelin içindeki tüm mesh'leri gez ve seçilen rengi uygula
+        model.traverse((child) => {
+          if (child.isMesh) {
+            child.material.color.set(selectedColor); // Rengi ayarla
+            child.material.needsUpdate = true; // Materyali güncelle
+          }
+        });
+
+        // Daha önce eklenen decal mesh'lerini sahneye geri ekle
         decalMeshesRef.current.forEach((decal) => {
           scene.add(decal);
         });
       },
-      undefined,
+      undefined, // Yükleme işlemi sırasında bir şey yapılmayacak
       (error) => {
-        console.error("GLTF yükleme hatası:", error);
+        console.error("GLTF yükleme hatası:", error); // Hata durumunda mesaj yazdır
       }
     );
 
+    // Animasyon döngüsü: Sahneyi sürekli olarak yeniden render eder
     const animate = () => {
-      requestAnimationFrame(animate);
-      controls.update(); // Update OrbitControls in the animation loop
-      renderer.render(scene, camera);
+      requestAnimationFrame(animate); // Her kare için bu fonksiyonu çağır
+      controls.update(); // Kontrolleri güncelle (örn. kamera hareketleri)
+      renderer.render(scene, camera); // Sahneyi yeniden çiz
     };
 
-    animate();
+    animate(); // Animasyon döngüsünü başlat
 
-    // Mouse events
-    const handleClick = (event) => {
+    // Fare olaylarını işleyici fonksiyonlar
+    /*   const handleClick = (event) => {
       onMouseClick(
         event,
         camera,
@@ -101,6 +124,19 @@ const uygulamaV3 = () => {
         usedImagesRef,
         decalMeshesRef,
         selectedMeshRef
+      );
+    }; */
+    const handleClick = (event) => {
+      onMouseClick(
+        event,
+        camera,
+        scene,
+        renderer,
+        selectedImage,
+        usedImagesRef,
+        decalMeshesRef,
+        selectedMeshRef,
+        decalSizeFactor // Slider'dan gelen boyut faktörünü burada kullan
       );
     };
 
@@ -132,11 +168,13 @@ const uygulamaV3 = () => {
       onMouseUp(event, selectedMeshRef);
     };
 
+    // Pencereye fare olaylarını ekle
     window.addEventListener("click", handleClick);
     window.addEventListener("mousedown", handleDown);
     window.addEventListener("mousemove", handleMove);
     window.addEventListener("mouseup", handleUp);
 
+    // Temizlik işlemleri: Bileşen kapatıldığında çalışır
     return () => {
       window.removeEventListener("click", handleClick);
       window.removeEventListener("mousedown", handleDown);
@@ -146,32 +184,33 @@ const uygulamaV3 = () => {
         rendererRef.current.removeChild(renderer.domElement);
       }
     };
-  }, [selectedImage]);
+  }, [selectedImage]); // Bu efekt, `selectedImage` değiştiğinde yeniden çalışır
 
-  // useEffect to update controls.enabled when controlModel changes
+  // Kamera kontrolünü kilitleme/açma
   useEffect(() => {
     if (controlsRef.current) {
-      controlsRef.current.enabled = controlModel;
+      controlsRef.current.enabled = controlModel; // Kontrolleri aktif/pasif yap
     }
-  }, [controlModel]);
+  }, [controlModel]); // Bu efekt, `controlModel` değiştiğinde çalışır
 
+  // Resim dosyalarını yüklemek için kullanılan fonksiyon
   const handleImageChange = (event) => {
-    // Prevent default behavior
     event.preventDefault();
     event.stopPropagation();
 
-    const files = Array.from(event.target.files);
+    const files = Array.from(event.target.files); // Seçilen dosyaları al
     const imagePromises = files.map((file) => {
       return new Promise((resolve, reject) => {
-        const reader = new FileReader();
+        const reader = new FileReader(); // Dosya okuyucusu oluştur
         reader.onload = () => {
-          resolve(reader.result);
+          resolve(reader.result); // Dosya başarıyla yüklendiğinde sonucu döndür
         };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
+        reader.onerror = reject; // Hata olursa reddet
+        reader.readAsDataURL(file); // Dosyayı URL formatında oku
       });
     });
 
+    // Tüm resim dosyalarını yükle ve durumu güncelle
     Promise.all(imagePromises)
       .then((newImages) =>
         setImages((prevImages) => [...prevImages, ...newImages])
@@ -179,24 +218,40 @@ const uygulamaV3 = () => {
       .catch((error) => console.error("Resim yükleme hatası:", error));
   };
 
+  // Kullanıcı bir resmi seçtiğinde çağrılan fonksiyon
   const handleImageSelect = (image) => {
-    // Prevent default refresh behavior
-    setSelectedImage(image);
+    setSelectedImage(image); // Seçilen resmi duruma kaydet
   };
 
+  // Renk değişikliğini işleyen fonksiyon
+  const handleColorChange = (event) => {
+    const newColor = event.target.value; // Seçilen rengi al
+    setSelectedColor(newColor); // Durumu güncelle
+    if (modelRef.current) {
+      // Model mevcutsa, rengi değiştir
+      modelRef.current.traverse((child) => {
+        if (child.isMesh) {
+          child.material.color.set(newColor);
+          child.material.needsUpdate = true;
+        }
+      });
+    }
+  };
+
+  // Bileşenin render ettiği JSX kısmı
   return (
     <div className="flex w-screen h-screen">
       <div
-        ref={rendererRef}
-        className=" w-3/4 bg-slate-100 border-r border-r-black border-r-2"
+        ref={rendererRef} // Renderer için referans
+        className="w-3/4 flex items-center justify-center bg-slate-100 border-r-gray-500 border-r-2"
       />
-      <div className="bg-slate-100 p-4 w-1/4 flex flex-col gap-4">
+      <div className="bg-slate-100 p-4 w-1/4 flex flex-col gap-2">
         <div className="w-full border border-slate-300 p-2 rounded-xl">
           <input
             type="file"
-            accept="image/*"
-            multiple
-            onChange={handleImageChange}
+            accept="image/*" // Sadece resim dosyalarını kabul et
+            multiple // Birden fazla dosya seçimine izin ver
+            onChange={handleImageChange} // Dosya değişikliğinde fonksiyonu çağır
           />
         </div>
         <div className="flex flex-col gap-2 p-2 border border-slate-300 rounded-xl">
@@ -204,16 +259,16 @@ const uygulamaV3 = () => {
           <div className="flex flex-wrap gap-4">
             {images.map((image, index) => (
               <img
-                key={index}
-                src={image}
-                alt={`Resim ${index + 1}`}
-                onClick={() => handleImageSelect(image)}
+                key={index} // Benzersiz anahtar
+                src={image} // Resmin kaynağı
+                alt={`Resim ${index + 1}`} // Alternatif metin
+                onClick={() => handleImageSelect(image)} // Resme tıklandığında seçme işlemi
                 className="rounded-xl"
                 style={{
                   height: "200px",
                   border:
                     selectedImage === image
-                      ? "2px solid blue"
+                      ? "2px solid blue" // Seçili resim için mavi kenarlık
                       : "1px solid gray",
                   marginTop: "10px",
                   cursor: "pointer",
@@ -222,19 +277,46 @@ const uygulamaV3 = () => {
             ))}
           </div>
         </div>
-        <div className="w-full mt-4 flex gap-2">
+        <div className="flex flex-col gap-1">
+          <h6>Decal Boyutunu Ayarla: {decalSizeFactor}</h6>{" "}
+          {/* Slider değerini göster */}
+          <input
+            type="range"
+            min="4000"
+            max="50000"
+            value={decalSizeFactor}
+            onChange={(e) => setDecalSizeFactor(e.target.value)}
+            className="w-full"
+          />
+        </div>
+
+        <div className="w-full  flex gap-2">
           <button
             className="bg-red-500 text-white font-semibold w-1/2 rounded-xl text-center py-1 hover:bg-black/50"
-            onClick={() => setControlModel(false)}
+            onClick={() => setControlModel(false)} // Modeli kilitle
           >
             MODELİ KİLİTLE
           </button>
           <button
             className="bg-green-500 text-white font-semibold w-1/2 rounded-xl text-center py-1 hover:bg-black/50"
-            onClick={() => setControlModel(true)}
+            onClick={() => setControlModel(true)} // Modeli aç
           >
             MODELİ AÇ
           </button>
+        </div>
+        <div className="flex flex-col gap-1">
+          <h6>Ürün rengini seç:</h6>
+          <select
+            value={selectedColor} // Seçili rengi göster
+            onChange={handleColorChange} // Renk değişikliğinde çağrılan fonksiyon
+            className="bg-gray-600 w-full py-1 rounded-lg px-2 text-white"
+          >
+            <option value="#ffffff">White</option>
+            <option value="#ff0000">Red</option>
+            <option value="#00ff00">Green</option>
+            <option value="#0000ff">Blue</option>
+            <option value="#000000">Black</option>
+          </select>
         </div>
       </div>
     </div>

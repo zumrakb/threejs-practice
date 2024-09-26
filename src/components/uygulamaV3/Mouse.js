@@ -6,7 +6,7 @@ import { createDecalMesh, updateDecalMesh } from "./DecalMesh";
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
-export const onMouseClick = async (
+/* export const onMouseClick = async (
   event,
   camera,
   scene,
@@ -45,6 +45,55 @@ export const onMouseClick = async (
       const image = await loadImage(selectedImage);
       const texture = createCanvasTexture(image);
       const decalMesh = createDecalMesh(texture, intersected);
+      decalMeshes.current.push(decalMesh);
+      scene.add(decalMesh);
+      usedImages.current.push(selectedImage);
+    } catch (error) {
+      console.error("Resim yükleme hatası:", error);
+    }
+  } else {
+    console.log("Nesneye tıklanmadı.");
+  }
+}; */
+
+export const onMouseClick = async (
+  event,
+  camera,
+  scene,
+  renderer,
+  selectedImage,
+  usedImages,
+  decalMeshes,
+  selectedMesh,
+  sizeFactor // Yeni parametre
+) => {
+  if (selectedMesh.current) return;
+
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(scene.children, true);
+
+  if (intersects.length > 0) {
+    const intersected = intersects[0];
+    const intersectedObj = intersected.object;
+
+    if (decalMeshes.current.includes(intersectedObj)) {
+      console.log("Seçili decal üzerinde işlem yapılamaz.");
+      return;
+    }
+
+    if (usedImages.current.includes(selectedImage)) {
+      console.log("Bu resim zaten eklenmiş.");
+      return;
+    }
+
+    try {
+      const image = await loadImage(selectedImage);
+      const texture = createCanvasTexture(image);
+      const decalMesh = createDecalMesh(texture, intersected, sizeFactor); // Boyut faktörünü burada kullan
       decalMeshes.current.push(decalMesh);
       scene.add(decalMesh);
       usedImages.current.push(selectedImage);
