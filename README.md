@@ -1,5 +1,7 @@
 # Three JS Pratikleri 
 
+DEPLOYMENT LİNK: https://threejs-practice-virid-one.vercel.app/ 
+
 ## Kısa İçerik Videosu:
 
 
