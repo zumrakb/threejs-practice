@@ -1,61 +1,12 @@
 import * as THREE from "three";
 import { loadImage } from "./LoadImage";
 import { createCanvasTexture } from "./CreateCanvas";
-import { createDecalMesh, updateDecalMesh } from "./DecalMesh";
+import { createDecalMesh } from "./DecalMesh";
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
-/* export const onMouseClick = async (
-  event,
-  camera,
-  scene,
-  renderer,
-  selectedImage,
-  usedImages,
-  decalMeshes,
-  selectedMesh
-) => {
-  // Disable interaction when a decal is being dragged
-  if (selectedMesh.current) return;
-
-  const rect = renderer.domElement.getBoundingClientRect();
-  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-  raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.intersectObjects(scene.children, true);
-
-  if (intersects.length > 0) {
-    const intersected = intersects[0];
-    const intersectedObj = intersected.object;
-
-    // Skip decal interaction if the intersected object is a decal
-    if (decalMeshes.current.includes(intersectedObj)) {
-      console.log("Seçili decal üzerinde işlem yapılamaz.");
-      return;
-    }
-
-    if (usedImages.current.includes(selectedImage)) {
-      console.log("Bu resim zaten eklenmiş.");
-      return;
-    }
-
-    try {
-      const image = await loadImage(selectedImage);
-      const texture = createCanvasTexture(image);
-      const decalMesh = createDecalMesh(texture, intersected);
-      decalMeshes.current.push(decalMesh);
-      scene.add(decalMesh);
-      usedImages.current.push(selectedImage);
-    } catch (error) {
-      console.error("Resim yükleme hatası:", error);
-    }
-  } else {
-    console.log("Nesneye tıklanmadı.");
-  }
-}; */
-
+// Export the onMouseClick function
 export const onMouseClick = async (
   event,
   camera,
@@ -65,7 +16,7 @@ export const onMouseClick = async (
   usedImages,
   decalMeshes,
   selectedMesh,
-  sizeFactor // Yeni parametre
+  sizeFactor = 2000 // Default parameter
 ) => {
   if (selectedMesh.current) return;
 
@@ -80,38 +31,141 @@ export const onMouseClick = async (
     const intersected = intersects[0];
     const intersectedObj = intersected.object;
 
+    // Check if the clicked object is already a decal
     if (decalMeshes.current.includes(intersectedObj)) {
-      console.log("Seçili decal üzerinde işlem yapılamaz.");
+      console.log("Cannot interact with the selected decal.");
       return;
     }
 
     if (usedImages.current.includes(selectedImage)) {
-      console.log("Bu resim zaten eklenmiş.");
+      console.log("This image has already been added.");
       return;
     }
 
     try {
       const image = await loadImage(selectedImage);
       const texture = createCanvasTexture(image);
-      const decalMesh = createDecalMesh(texture, intersected, sizeFactor); // Boyut faktörünü burada kullan
+      const decalMesh = createDecalMesh(texture, intersected, sizeFactor);
       decalMeshes.current.push(decalMesh);
       scene.add(decalMesh);
       usedImages.current.push(selectedImage);
     } catch (error) {
-      console.error("Resim yükleme hatası:", error);
+      console.error("Image loading error:", error);
     }
   } else {
-    console.log("Nesneye tıklanmadı.");
+    console.log("No object was clicked.");
   }
 };
 
-export const onMouseDown = (
+// Function to handle mouse movement
+/* export const onMouseMove = (
+  event,
+  camera,
+  renderer,
+  scene,
+  selectedMesh,
+  initialMousePositionRef,
+  decalMeshes,
+  decalOffsetRef
+) => {
+  if (!selectedMesh.current) return;
+
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+
+  const intersects = raycaster.intersectObjects(scene.children, true);
+
+  if (intersects.length > 0) {
+    const intersected = intersects[0];
+
+    // Update the decal's position based on the intersection point and the offset
+    const newPosition = intersected.point.clone().sub(decalOffsetRef.current);
+    selectedMesh.current.position.copy(newPosition);
+
+    // Orient the decal to match the surface normal
+    const normalMatrix = new THREE.Matrix3().getNormalMatrix(
+      intersected.object.matrixWorld
+    );
+    const normal = intersected.face.normal
+      .clone()
+      .applyMatrix3(normalMatrix)
+      .normalize();
+    selectedMesh.current.lookAt(
+      newPosition.x + normal.x,
+      newPosition.y + normal.y,
+      newPosition.z + normal.z
+    );
+
+    // Update mouse position
+    initialMousePositionRef.current = { x: mouse.x, y: mouse.y };
+  }
+}; */
+export const onMouseMove = (
+  event,
+  cameraRef,
+  rendererRef,
+  sceneRef,
+  modelRef,
+  images,
+  setOverlayPosition,
+  setTexts,
+  isDragging,
+  draggedImageIndex,
+  draggedImage,
+  controlsRef,
+  setImages
+) => {
+  if (!rendererRef.current || !isDragging || draggedImageIndex === null) return;
+
+  const rect = rendererRef.current.domElement.getBoundingClientRect();
+  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+  const deltaX = event.clientX - initialMousePosition.x;
+  const deltaY = event.clientY - initialMousePosition.y;
+
+  if (selectedHandle) {
+    const updatedImages = images.map((img, index) => {
+      if (index === draggedImageIndex) {
+        if (selectedHandle === "resize") {
+          // Resize the decal proportionally
+          const newScale = Math.max(img.scale + deltaX * 0.01, 0.1); // Adjust scale change sensitivity
+          return { ...img, scale: newScale };
+        } else if (selectedHandle === "rotate") {
+          // Rotate the decal
+          const rotationChange = deltaX * 0.1; // Adjust rotation sensitivity
+          return { ...img, rotation: img.rotation + rotationChange };
+        }
+      }
+      return img;
+    });
+
+    setImages(updatedImages);
+    applyTextureToModel(
+      modelRef,
+      updatedImages,
+      rendererRef,
+      sceneRef,
+      cameraRef,
+      [], // texts
+      setImages
+    );
+    return; // Skip other logic when interacting with handles
+  }
+};
+
+// Function to handle mouse down
+/* export const onMouseDown = (
   event,
   camera,
   renderer,
   decalMeshes,
   selectedMesh,
-  initialMousePositionRef
+  initialMousePositionRef,
+  decalOffsetRef
 ) => {
   const rect = renderer.domElement.getBoundingClientRect();
   mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -122,53 +176,90 @@ export const onMouseDown = (
 
   if (intersects.length > 0) {
     const intersected = intersects[0];
-    const intersectedObj = intersected.object;
-    selectedMesh.current = intersectedObj;
+    selectedMesh.current = intersected.object;
     initialMousePositionRef.current = { x: mouse.x, y: mouse.y };
+
+    // Update decalOffsetRef
+    if (decalOffsetRef.current) {
+      decalOffsetRef.current
+        .copy(intersected.point)
+        .sub(selectedMesh.current.position);
+    }
   }
-};
+}; */
 
-export const onMouseMove = async (
+export const onMouseDown = (
   event,
-  camera,
-  renderer,
-  scene,
-  windowSize,
-  selectedMesh,
-  initialMousePositionRef,
-  selectedImage
+  cameraRef,
+  rendererRef,
+  sceneRef,
+  images,
+  setDraggedImageIndex,
+  setDraggedImage,
+  setIsDragging,
+  selectedImageIndex,
+  controlsRef,
+  setInitialOffset // Newly added
 ) => {
-  if (!selectedMesh.current) return;
+  if (!rendererRef.current) return;
 
-  const rect = renderer.domElement.getBoundingClientRect();
+  const rect = rendererRef.current.domElement.getBoundingClientRect();
   mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
   mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
-  raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.intersectObjects(scene.children, true);
+  raycaster.setFromCamera(mouse, cameraRef.current);
+  const intersects = raycaster.intersectObjects(
+    sceneRef.current.children,
+    true
+  );
 
   if (intersects.length > 0) {
-    const intersected = intersects[0];
+    const intersect = intersects[0];
+    selectedObject = intersect.object;
 
-    const deltaX = (mouse.x - initialMousePositionRef.current.x) / windowSize.w;
-    const deltaY = (mouse.y - initialMousePositionRef.current.y) / windowSize.h;
+    // Detect if the user clicks on the rotate or resize handle
+    if (selectedObject.userData && selectedObject.userData.handleType) {
+      selectedHandle = selectedObject.userData.handleType; // Either 'resize' or 'rotate'
+      setIsDragging(true);
+      initialMousePosition.set(event.clientX, event.clientY);
+      return;
+    }
 
-    selectedMesh.current.position.x += deltaX;
-    selectedMesh.current.position.y += deltaY;
+    // Handle normal decal dragging
+    if (intersect.object.isMesh) {
+      setDraggedImageIndex(selectedImageIndex);
+      setDraggedImage(images[selectedImageIndex]);
+      setIsDragging(true);
+      initialMousePosition.set(event.clientX, event.clientY);
 
-    initialMousePositionRef.current = { x: mouse.x, y: mouse.y };
+      setInitialOffset({
+        offsetX: event.clientX - rect.left,
+        offsetY: event.clientY - rect.top,
+      });
 
-    // Ensure texture update only if necessary
-    if (selectedMesh.current.material && selectedMesh.current.material.map) {
-      const texture = selectedMesh.current.material.map;
-      const image = await loadImage(selectedImage);
-      await updateDecalMesh(selectedMesh.current, texture, intersected, image);
-    } else {
-      console.error("Seçili decal üzerinde geometry bulunamadı.");
+      if (controlsRef.current) {
+        controlsRef.current.enabled = false;
+      }
     }
   }
 };
 
-export const onMouseUp = (event, selectedMesh) => {
+// Function to handle mouse up
+/* export const onMouseUp = (selectedMesh) => {
   selectedMesh.current = null;
+}; */
+export const onMouseUp = (
+  setIsDragging,
+  setDraggedImage,
+  setDraggedImageIndex,
+  controlsRef
+) => {
+  setIsDragging(false);
+  setDraggedImage(null);
+  setDraggedImageIndex(null);
+  selectedHandle = null; // Reset the handle after the user releases the mouse
+
+  if (controlsRef.current) {
+    controlsRef.current.enabled = true;
+  }
 };

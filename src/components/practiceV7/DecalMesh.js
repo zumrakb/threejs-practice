@@ -35,7 +35,7 @@ import { DecalGeometry } from "three/examples/jsm/geometries/DecalGeometry.js";
   return decalMesh;
 }; */
 
-export const createDecalMesh = (texture, intersected, sizeFactor = 2000) => {
+/* export const createDecalMesh = (texture, intersected, sizeFactor = 2000) => {
   const material = new THREE.MeshStandardMaterial({
     map: texture,
     transparent: true,
@@ -61,6 +61,69 @@ export const createDecalMesh = (texture, intersected, sizeFactor = 2000) => {
 
   const position = intersected.point.clone();
   const orientation = intersected.face.normal.clone();
+
+  const decalGeometry = new DecalGeometry(
+    intersected.object,
+    position,
+    orientation,
+    size
+  );
+  const decalMesh = new THREE.Mesh(decalGeometry, material);
+
+  return decalMesh;
+}; */
+/* export const createDecalMesh = (texture, intersected, sizeFactor = 2000) => {
+  const material = new THREE.MeshStandardMaterial({
+    map: texture,
+    transparent: true,
+    opacity: 1,
+    depthTest: true, // Decal'i modelin yüzeyine yapışacak şekilde ayarla
+    depthWrite: false, // Derinlik tamponuna yazmayı devre dışı bırak
+    polygonOffset: true, // Decal'i yüzeyin biraz üstüne yerleştir
+    polygonOffsetFactor: -4, // Negatif değer yüzeye yapışmayı sağlar
+    wireframe: false,
+    side: THREE.DoubleSide, // Decal'in iki tarafını da göster
+  });
+
+  const size = new THREE.Vector3(
+    texture.source.data.width / sizeFactor,
+    texture.source.data.height / sizeFactor,
+    1
+  );
+
+  const position = intersected.point.clone();
+  const orientation = new THREE.Euler(); // Rotasyonu sıfırla
+
+  const decalGeometry = new DecalGeometry(
+    intersected.object,
+    position,
+    orientation,
+    size
+  );
+  const decalMesh = new THREE.Mesh(decalGeometry, material);
+
+  return decalMesh;
+}; */
+export const createDecalMesh = (texture, intersected, sizeFactor = 2000) => {
+  const material = new THREE.MeshStandardMaterial({
+    map: texture,
+    transparent: true,
+    opacity: 1,
+    depthTest: true,
+    depthWrite: true,
+    polygonOffset: true,
+    polygonOffsetFactor: -4, // Ensure decal appears on top of the surface
+    side: THREE.DoubleSide,
+  });
+
+  const size = new THREE.Vector3(
+    texture.source.data.width / sizeFactor,
+    texture.source.data.height / sizeFactor,
+    1
+  );
+
+  const position = intersected.point.clone();
+  const orientation = new THREE.Euler(); // Reset rotation
 
   const decalGeometry = new DecalGeometry(
     intersected.object,
@@ -112,7 +175,7 @@ export const createDecalMesh = (texture, intersected, sizeFactor = 2000) => {
   mesh.material = material;
 }; */
 
-export const updateDecalMesh = (
+/* export const updateDecalMesh = (
   mesh,
   texture,
   intersected,
@@ -142,6 +205,53 @@ export const updateDecalMesh = (
     texture.source.data.height / sizeFactor,
     1
   );
+  const position = intersected.point.clone();
+  const orientation = intersected.face.normal.clone();
+
+  const decalGeometry = new DecalGeometry(
+    intersected.object,
+    position,
+    orientation,
+    size
+  );
+
+  // Mevcut geometry'yi kontrol ettikten sonra güncelleme işlemi yapılıyor
+  mesh.geometry.dispose();
+  mesh.geometry = decalGeometry;
+  mesh.material = material;
+}; */
+
+export const updateDecalMesh = (
+  mesh,
+  texture,
+  intersected,
+  image,
+  sizeFactor = 2000
+) => {
+  if (!mesh || !mesh.geometry) {
+    console.error("Seçili decal üzerinde geometry bulunamadı.");
+    return;
+  }
+
+  const material = new THREE.MeshStandardMaterial({
+    map: texture,
+    transparent: true,
+    opacity: 1,
+    depthTest: true,
+    depthWrite: true,
+    polygonOffset: true,
+    polygonOffsetFactor: -5,
+    wireframe: false,
+    side: THREE.FrontSide,
+  });
+
+  // Boyutu sizeFactor'a göre sabit tut
+  const size = new THREE.Vector3(
+    texture.source.data.width / sizeFactor,
+    texture.source.data.height / sizeFactor,
+    1
+  );
+
   const position = intersected.point.clone();
   const orientation = intersected.face.normal.clone();
 
